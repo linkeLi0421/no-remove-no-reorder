@@ -73,6 +73,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+#include <map>
 
 namespace llvm {
 
@@ -469,6 +470,11 @@ class ASTContext : public RefCountedBase<ASTContext> {
   ASTContext &this_() { return *this; }
 
 public:
+  // map the no remove tag name with line number
+  std::map<std::string, unsigned> noremove_map;
+  // map the no reorder tag name with line number list
+  std::map<std::string, std::vector<unsigned>> noreorder_map;
+
   /// A type synonym for the TemplateOrInstantiation mapping.
   using TemplateOrSpecializationInfo =
       llvm::PointerUnion<VarTemplateDecl *, MemberSpecializationInfo *>;

@@ -47,6 +47,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Support/TimeProfiler.h"
+#include <algorithm>
 
 using namespace clang;
 using namespace sema;
@@ -2341,6 +2342,42 @@ void Sema::ActOnComment(SourceRange Comment) {
       FixItHint::CreateReplacement(MagicMarkerRange, MagicMarkerText);
   }
   Context.addComment(RC);
+  // get tags from source code comments
+  StringRef comment = RC.getRawText(SourceMgr);
+  if(comment.find("no-remove") != comment.npos) {
+    unsigned end_num = SourceMgr.getSpellingLineNumber(RC.getEndLoc());
+    // get no remove tag name
+    std::string tag_name = comment.str().substr(comment.find("no-remove")+sizeof("no-remove"));
+    tag_name.erase(std::remove_if(tag_name.begin(),
+                    tag_name.end(), 
+                    [](unsigned char x){ return std::isspace(x); }),
+                    tag_name.end());
+    Context.noremove_map.insert({tag_name, end_num+1});
+  }
+  if(comment.find("no-reorder") != comment.npos && comment.find(":") != comment.npos) {
+    unsigned end_num = SourceMgr.getSpellingLineNumber(RC.getEndLoc());
+    // get no reorder tag name
+    std::string tag_name = comment.str().substr(comment.find("no-reorder")+sizeof("no-reorder"), comment.find(":") - comment.find("no-reorder") - sizeof("no-reorder"));
+    tag_name.erase(std::remove_if(tag_name.begin(),
+                    tag_name.end(), 
+                    [](unsigned char x){ return std::isspace(x); }),
+                    tag_name.end());
+
+    // get no reorder number
+      std::string tag_num = comment.str().substr(comment.find(":")+1);
+      tag_num.erase(std::remove_if(tag_num.begin(),
+                tag_num.end(), 
+                [](unsigned char x){ return std::isspace(x); }),
+                tag_num.end());
+      int number = std::stoi(tag_num);
+      if (Context.noreorder_map.count(tag_name)) {
+        Context.noreorder_map[tag_name].push_back(number);
+      }
+      else {
+        Context.noreorder_map[tag_name] = {number};
+      }
+  }
+
 }
 
 // Pin this vtable to this file.
