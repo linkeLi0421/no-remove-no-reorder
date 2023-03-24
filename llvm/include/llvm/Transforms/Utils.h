@@ -21,6 +21,11 @@ class FunctionPass;
 class Pass;
 
 //===----------------------------------------------------------------------===//
+// createMarkInstIndexPass - Mark Inst Index before backend.
+//
+FunctionPass *createMarkInstIndexPass();
+
+//===----------------------------------------------------------------------===//
 // createMetaRenamerPass - Rename everything with metasyntatic names.
 //
 ModulePass *createMetaRenamerPass();

@@ -1086,6 +1086,8 @@ bool TargetPassConfig::addCoreISelPasses() {
 }
 
 bool TargetPassConfig::addISelPasses() {
+  addPass(createMarkInstIndexPass());
+
   if (TM->useEmulatedTLS())
     addPass(createLowerEmuTLSPass());
 
