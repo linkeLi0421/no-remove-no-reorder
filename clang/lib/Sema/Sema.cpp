@@ -2353,6 +2353,7 @@ void Sema::ActOnComment(SourceRange Comment) {
                     [](unsigned char x){ return std::isspace(x); }),
                     tag_name.end());
     Context.noremove_map.insert({tag_name, end_num+1});
+    Context.line_num_set.insert(end_num+1);
   }
   if(comment.find("no-reorder") != comment.npos && comment.find(":") != comment.npos) {
     unsigned end_num = SourceMgr.getSpellingLineNumber(RC.getEndLoc());
@@ -2371,11 +2372,12 @@ void Sema::ActOnComment(SourceRange Comment) {
                 tag_num.end());
       int number = std::stoi(tag_num);
       if (Context.noreorder_map.count(tag_name)) {
-        Context.noreorder_map[tag_name].push_back(number);
+        Context.noreorder_map[tag_name].push_back(end_num+1);
       }
       else {
-        Context.noreorder_map[tag_name] = {number};
+        Context.noreorder_map[tag_name] = {end_num+1};
       }
+      Context.line_num_set.insert(end_num+1);
   }
 
 }

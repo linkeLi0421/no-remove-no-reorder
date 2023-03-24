@@ -30,6 +30,7 @@
 #include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
 #include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/DiagnosticPrinter.h"
 #include "llvm/IR/GlobalValue.h"
@@ -350,6 +351,41 @@ namespace clang {
           // TODO: use a fast content hash when available.
           auto NameHash = llvm::hash_value(F.getName());
           ManglingFullSourceLocs.push_back(std::make_pair(NameHash, Loc));
+        }
+      }
+
+      for (auto &F : getModule()->functions()) {
+        for (auto &B : F) {
+          for (auto &I : B) {
+            llvm::DebugLoc Loc = I.getDebugLoc();
+            if (!Loc)
+              continue;
+            unsigned Line = Loc.getLine();
+            if (C.line_num_set.count(Line)) {
+              // mark the instruction
+              for(auto i : C.noremove_map) {
+                if (i.second == Line) {
+                  // find tag in noremove
+                  llvm::StringRef tag_name = llvm::StringRef(i.first);
+                  llvm::MDString* MD_tag_name = llvm::MDString::get(F.getContext(), tag_name);
+                  I.setMetadata("noremove", llvm::MDNode::get(F.getContext(), MD_tag_name));
+                }
+              }
+              for(auto i : C.noreorder_map) {
+                if (std::find(i.second.begin(), i.second.end(), Line) != i.second.end()) {
+                  // find tag in noreorder
+                  llvm::StringRef tag_name = llvm::StringRef(i.first);
+                  llvm::MDString* MD_tag_name = llvm::MDString::get(F.getContext(), tag_name);
+                  int index = std::distance(i.second.begin(), std::find(i.second.begin(), i.second.end(), Line));
+                  ConstantInt* const_index = ConstantInt::get(llvm::Type::getInt32Ty(F.getContext()), index);
+                  std::vector<Metadata*> MetadataValues;
+                  MetadataValues.push_back(ConstantAsMetadata::get(const_index));
+                  MetadataValues.push_back(MD_tag_name);
+                  I.setMetadata("noreorder", llvm::MDNode::get(F.getContext(), MetadataValues));
+                }
+              }
+            }
+          }
         }
       }
 

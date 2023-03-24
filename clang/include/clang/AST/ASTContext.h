@@ -74,6 +74,7 @@
 #include <utility>
 #include <vector>
 #include <map>
+#include <unordered_set>
 
 namespace llvm {
 
@@ -474,6 +475,8 @@ public:
   std::map<std::string, unsigned> noremove_map;
   // map the no reorder tag name with line number list
   std::map<std::string, std::vector<unsigned>> noreorder_map;
+  // stotr all line numbers
+  std::unordered_set<int> line_num_set; 
 
   /// A type synonym for the TemplateOrInstantiation mapping.
   using TemplateOrSpecializationInfo =
