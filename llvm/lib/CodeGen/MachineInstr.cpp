@@ -1839,6 +1839,24 @@ void MachineInstr::print(raw_ostream &OS, ModuleSlotTracker &MST,
     DL.print(OS);
   }
 
+  // loc may be null, but index exsits
+  if (getDebugLoc().getInstIndex() && !this->isDebugValue() ) {
+    OS << " InstIndex: ";
+    this->getInstIndex()->print(OS);
+
+    InstIndexSet IIS = this->getInstIndexSet();
+    if (IIS.size()) {
+      OS << " InstIndexSet size: " <<  IIS.size() << " ";
+      InstIndexSet::iterator it = IIS.begin();
+      for (; it != IIS.end(); ++it) {
+        (*it)->print(OS);
+        OS << ", ";
+      }
+    } else {
+      OS << " No InstIndexSet";
+    }
+  }
+
   // Print extra comments for DEBUG_VALUE.
   if (isDebugValue() && getDebugVariableOp().isMetadata()) {
     if (!HaveSemi) {
@@ -2360,4 +2378,47 @@ unsigned MachineInstr::getDebugInstrNum(MachineFunction &MF) {
   if (DebugInstrNum == 0)
     DebugInstrNum = MF.getNewDebugInstrNum();
   return DebugInstrNum;
+}
+
+/// Returns the opcode name of this MachineInstr.
+std::string MachineInstr::getOpcodeName() const {
+  const MachineFunction *MF = getMFIfAvailable(*this);
+  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
+  if (TII){
+      std::string opcodename = TII->getName(getOpcode()).str();
+      return opcodename;
+  }
+  return "unknown opcode";
+}
+
+std::string MachineInstr::getOpType() {
+    if (isConditionalBranch()) {
+        return "ConditionalBranch";
+    }
+    if (isCompare()) {
+        return "Compare";
+    }
+    return "Others";
+}
+
+/// write debuginfo to DebuginfoList
+void MachineInstr::getDebugInfoTree(DebuginfoList &DIList, bool &status) {
+  const DebugLoc &debugInfo = this->getDebugLoc();
+  if (!debugInfo) {
+    status = false;
+    return;
+  }
+
+  DebugLoc debugInfoTmp = debugInfo;
+  do {
+    auto *Scope = cast<DIScope>(debugInfoTmp.getScope());
+    const std::string &filename = (*Scope).getFilename().str();
+    unsigned linenub = debugInfoTmp.getLine();
+    unsigned colnub = debugInfoTmp.getCol();
+    DIList.push_back(make_tuple(filename, linenub, colnub));
+  } while ((debugInfoTmp = debugInfoTmp.getInlinedAt()));
+
+  status = true;
+  return;
+
 }

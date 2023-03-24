@@ -14,8 +14,8 @@ using namespace llvm;
 //===----------------------------------------------------------------------===//
 // DebugLoc Implementation
 //===----------------------------------------------------------------------===//
-DebugLoc::DebugLoc(const DILocation *L) : Loc(const_cast<DILocation *>(L)) {}
-DebugLoc::DebugLoc(const MDNode *L) : Loc(const_cast<MDNode *>(L)) {}
+DebugLoc::DebugLoc(const DILocation *L) : Loc(const_cast<DILocation *>(L)) { ThisIndex = nullptr; }
+DebugLoc::DebugLoc(const MDNode *L) : Loc(const_cast<MDNode *>(L)) { ThisIndex = nullptr; }
 
 DILocation *DebugLoc::get() const {
   return cast_or_null<DILocation>(Loc.get());

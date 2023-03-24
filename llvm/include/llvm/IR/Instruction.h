@@ -27,6 +27,9 @@
 #include "llvm/Support/Casting.h"
 #include <cstdint>
 #include <utility>
+#include <list>
+#include <tuple>
+#include "llvm/IR/InstIndex.h"
 
 namespace llvm {
 
@@ -35,6 +38,8 @@ class FastMathFlags;
 class MDNode;
 class Module;
 struct AAMDNodes;
+
+typedef std::list<std::tuple<std::string,unsigned,unsigned>> DebuginfoList;
 
 template <> struct ilist_alloc_traits<Instruction> {
   static inline void deleteNode(Instruction *V);
@@ -366,6 +371,20 @@ public:
 
   /// Return the debug location for this node as a DebugLoc.
   const DebugLoc &getDebugLoc() const { return DbgLoc; }
+
+  void getDebugInfoTree(DebuginfoList &DIList, bool &status);
+
+  InstIndex *getInstIndex() const { return DbgLoc.getInstIndex(); }
+
+  const InstIndexSet &getInstIndexSet() const { return DbgLoc.getInstIndexSet(); }
+
+  void setInstIndex(InstIndex* ii) { DbgLoc.setInstIndex(ii); DbgLoc.appendInstIndexSet(ii); }
+
+  void setInstIndexSet(InstIndexSet iis) { DbgLoc.setInstIndexSet(iis); }
+
+  void appendInstIndexSet(InstIndex* ii) { DbgLoc.appendInstIndexSet(ii); }
+
+  void appendInstIndexSet(InstIndexSet iis) { DbgLoc.appendInstIndexSet(iis); }
 
   /// Set or clear the nuw flag on this instruction, which must be an operator
   /// which supports this flag. See LangRef.html for the meaning of this flag.

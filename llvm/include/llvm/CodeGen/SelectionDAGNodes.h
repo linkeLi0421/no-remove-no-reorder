@@ -607,6 +607,9 @@ private:
   /// Source line information.
   DebugLoc debugLoc;
 
+  InstIndex *ThisIndex;
+  InstIndexSet ThisIndexSet;
+
   /// Return a pointer to the specified value type.
   static const EVT *getValueTypeList(EVT VT);
 
@@ -723,6 +726,18 @@ public:
   /// Set source location info.  Try to avoid this, putting
   /// it in the constructor is preferable.
   void setDebugLoc(DebugLoc dl) { debugLoc = std::move(dl); }
+
+  InstIndex *getInstIndex() const { return debugLoc.getInstIndex(); }
+
+  const InstIndexSet &getInstIndexSet() const { return debugLoc.getInstIndexSet(); }
+
+  void setInstIndex(InstIndex* ii) { debugLoc.setInstIndex(ii); debugLoc.appendInstIndexSet(ii); }
+
+  void setInstIndexSet(InstIndexSet iis) { debugLoc.setInstIndexSet(iis); }
+
+  void appendInstIndexSet(InstIndex* ii) { debugLoc.appendInstIndexSet(ii); }
+
+  void appendInstIndexSet(InstIndexSet iis) { debugLoc.appendInstIndexSet(iis); }
 
   /// This class provides iterator support for SDUse
   /// operands that use a specific SDNode.
@@ -1100,6 +1115,18 @@ public:
 
   unsigned getIROrder() const { return IROrder; }
   const DebugLoc &getDebugLoc() const { return DL; }
+  
+  InstIndex *getInstIndex() const { return DL.getInstIndex(); }
+
+  const InstIndexSet &getInstIndexSet() const { return DL.getInstIndexSet(); }
+
+  void setInstIndex(InstIndex *ii) { DL.setInstIndex(ii); DL.appendInstIndexSet(ii); }
+
+  void setInstIndexSet(InstIndexSet iis) { DL.setInstIndexSet(iis); }
+
+  void appendInstIndexSet(InstIndex *ii) { DL.appendInstIndexSet(ii); }
+
+  void appendInstIndexSet(InstIndexSet iis) { DL.appendInstIndexSet(iis); }
 };
 
 // Define inline functions from the SDValue class.

@@ -16,6 +16,7 @@
 
 #include "llvm/IR/TrackingMDRef.h"
 #include "llvm/Support/DataTypes.h"
+#include "llvm/IR/InstIndex.h"
 
 namespace llvm {
 
@@ -32,9 +33,11 @@ namespace llvm {
   /// one based on relatively opaque \a MDNode pointers.
   class DebugLoc {
     TrackingMDNodeRef Loc;
+    InstIndex *ThisIndex;
+    InstIndexSet ThisIndexSet;
 
   public:
-    DebugLoc() = default;
+     DebugLoc() { ThisIndex = nullptr; };
 
     /// Construct from an \a DILocation.
     DebugLoc(const DILocation *L);
@@ -46,6 +49,25 @@ namespace llvm {
     /// supported in order to handle forward references when reading textual
     /// IR.
     explicit DebugLoc(const MDNode *N);
+
+    InstIndex *getInstIndex() const { return ThisIndex; }
+
+    const InstIndexSet &getInstIndexSet() const { return ThisIndexSet; }
+
+    /// when initializing Index, remember to initialize InstIndexSet
+    void setInstIndex(InstIndex *SrcIndex) {
+      if (SrcIndex != nullptr) {
+      ThisIndex = SrcIndex;
+      ThisIndexSet.insert(SrcIndex);
+      }
+    }
+
+    void setInstIndexSet(InstIndexSet iis) { ThisIndexSet = iis; }
+
+    void appendInstIndexSet(InstIndex *SrcIndex) { if (SrcIndex != nullptr) ThisIndexSet.insert(SrcIndex); }
+
+    void appendInstIndexSet(InstIndexSet iis) { ThisIndexSet.insert(iis.begin(), iis.end()); }
+
 
     /// Get the underlying \a DILocation.
     ///

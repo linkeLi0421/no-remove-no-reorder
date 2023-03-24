@@ -1055,4 +1055,32 @@ void SDNode::print(raw_ostream &OS, const SelectionDAG *G) const {
     OS << ", ";
     DL.print(OS);
   }
+  
+  // This check is to exclude Nodes like BasicBlock, register
+  switch(getOpcode()) {
+    case ISD::STORE:
+    case ISD::LOAD:
+    case ISD::GlobalAddress:
+    case ISD::TargetGlobalAddress: {
+      return;
+    }
+
+  }
+  if (getDebugLoc().getInstIndex()) {
+    OS << " Thisindex: ";
+    this->getInstIndex()->print(OS);
+
+    if (this->getInstIndexSet().size()) {
+      OS << " ThisIndexList: ";
+      InstIndexSet::iterator it = getInstIndexSet().begin();
+      for (; it != getInstIndexSet().end(); ++it) {
+        OS << ", ";
+        (*it)->print(OS);
+      } 
+
+    }
+    else {
+      OS << " No InstIndex ";
+    }
+  }
 }

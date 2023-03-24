@@ -35,6 +35,7 @@
 #include <cassert>
 #include <cstdint>
 #include <utility>
+#include <list>
 
 namespace llvm {
 
@@ -53,6 +54,8 @@ class StringRef;
 class TargetInstrInfo;
 class TargetRegisterClass;
 class TargetRegisterInfo;
+
+typedef std::list<std::tuple<std::string,unsigned,unsigned>> DebuginfoList;
 
 //===----------------------------------------------------------------------===//
 /// Representation of each machine instruction.
@@ -416,6 +419,26 @@ public:
 
   /// Returns the debug location id of this MachineInstr.
   const DebugLoc &getDebugLoc() const { return DbgLoc; }
+
+  std::string getOpType();
+
+  /// Returns the opcode name of this MachineInstr.
+  std::string getOpcodeName() const;
+
+  /// write debuginfo to DebuginfoList
+  void getDebugInfoTree(DebuginfoList &DIList, bool &status);
+
+  InstIndex *getInstIndex() const { return DbgLoc.getInstIndex(); }
+
+  const InstIndexSet &getInstIndexSet() const { return DbgLoc.getInstIndexSet(); }
+
+  void setInstIndex(InstIndex *ii) { DbgLoc.setInstIndex(ii); DbgLoc.appendInstIndexSet(ii); }
+
+  void setInstIndexSet(InstIndexSet iis) { DbgLoc.setInstIndexSet(iis); }
+
+  void appendInstIndexSet(InstIndex *ii) { DbgLoc.appendInstIndexSet(ii); }
+
+  void appendInstIndexSet(InstIndexSet iis) { DbgLoc.appendInstIndexSet(iis); }
 
   /// Return the operand containing the offset to be used if this DBG_VALUE
   /// instruction is indirect; will be an invalid register if this value is
@@ -876,6 +899,17 @@ public:
   /// about this branch.
   bool isUnconditionalBranch(QueryType Type = AnyInBundle) const {
     return isBranch(Type) && isBarrier(Type) && !isIndirectBranch(Type);
+  }
+
+  /// help us conveniently judge if an instr is cond-solver
+  /// (cond-branch, select, mathfromselect) not complete
+  bool isCondSolver(QueryType Type = AnyInBundle) const {
+    bool iscondbr = isConditionalBranch(Type);
+    bool isselect = isSelect(Type);
+    bool ret = this->getInstIndex() ? 
+                iscondbr || isselect || this->getInstIndex()->MathFromSelect == 1 
+              : iscondbr || isselect;
+    return ret;
   }
 
   /// Return true if this instruction has a predicate operand that
