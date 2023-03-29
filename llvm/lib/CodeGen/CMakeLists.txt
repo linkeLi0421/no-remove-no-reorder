@@ -226,6 +226,8 @@ add_llvm_component_library(LLVMCodeGen
   WasmEHPrepare.cpp
   WinEHPrepare.cpp
   XRayInstrumentation.cpp
+  MyMIRDumper.cpp
+  MyIRDumper.cpp
   ${GeneratedMLSources}
 
   LiveDebugValues/LiveDebugValues.cpp
@@ -243,6 +245,7 @@ add_llvm_component_library(LLVMCodeGen
   ${MLDeps}
 
   LINK_COMPONENTS
+  MyProto
   Analysis
   BitReader
   BitWriter

@@ -974,6 +974,14 @@ void MachineOperand::print(raw_ostream &OS, ModuleSlotTracker &MST,
 LLVM_DUMP_METHOD void MachineOperand::dump() const { dbgs() << *this << '\n'; }
 #endif
 
+/// return the name of this operand
+std::string MachineOperand::getOperandName() const {
+  std::string type_str;
+  raw_string_ostream strstream(type_str);
+  this->print(strstream);
+  return strstream.str();
+}
+
 //===----------------------------------------------------------------------===//
 // MachineMemOperand Implementation
 //===----------------------------------------------------------------------===//

@@ -313,6 +313,9 @@ public:
 
   void dump() const;
 
+  /// return the name of this operand
+  std::string getOperandName() const;
+
   //===--------------------------------------------------------------------===//
   // Accessors that tell you what kind of MachineOperand you're looking at.
   //===--------------------------------------------------------------------===//

@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package mirpb; 
+
+message InstLoc {
+    string Filename = 1;
+    uint32 LineNo = 2;
+    uint32 ColNo = 3; 
+}
+
+message InstIndex {
+    string FuncName = 1;
+    string BBLabel = 2;
+    uint32 InstNo = 3;
+    bool MathFromSelect = 4;
+    bool TailMerged = 5;
+    bool TailDuplicated = 6;
+}
+
+message InstIndexList {
+    repeated InstIndex Idxs = 1;
+}
+
+message MIRInst {
+    string Opcode = 1;
+    string Optype = 4;
+    repeated string Oprand = 2;
+    repeated InstLoc Locs = 3;
+    InstIndex Idx = 5;
+    InstIndexList Idxs = 6;
+}
+
+message MIRBasicBlock {
+    string MBBLabel = 1; 
+    string BBLabel = 2;  /* "NULL_BB" if no BB found*/
+    repeated string BBLabelList = 5;
+    repeated MIRInst MIs = 3;
+    repeated string SuccMBBLabel = 4;
+    repeated string PredMBBLabel = 6;
+}
+
+message MIRFunction {
+    string FuncName = 1;
+    uint32 FuncID = 2;
+    repeated MIRBasicBlock MBBs = 3;
+}
+
+message MIRFunctionBook {
+    string Arch = 2;
+    repeated MIRFunction MFs = 1;
+}

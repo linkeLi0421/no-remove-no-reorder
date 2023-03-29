@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package irpb; 
+
+message InstLoc {
+    string Filename = 1;
+    uint32 LineNo = 2;
+    uint32 ColNo = 3; 
+}
+
+message InstIndex {
+    string FuncName = 1;
+    string BBLabel = 2;
+    uint32 InstNo = 3;
+}
+
+message InstIndexList {
+    repeated InstIndex Idxs = 1;
+}
+
+message IRInst {
+    string Opcode = 1;
+    repeated string Oprand = 2;
+    repeated InstLoc Locs = 3;
+    InstIndex Idx = 5;
+    InstIndexList Idxs = 6;
+}
+
+message IRBasicBlock {
+    string BBLabel = 1; 
+    repeated string BBLabelList = 5;
+    repeated IRInst Is = 3;
+    repeated string SuccBBLabel = 4;
+    repeated string PredBBLabel = 6;
+}
+
+message IRFunction {
+    string FuncName = 1;
+    uint32 FuncID = 2;
+    repeated IRBasicBlock BBs = 3;
+}
+
+message IRFunctionBook {
+    string arch = 2;
+    repeated IRFunction Fs = 1;
+} 

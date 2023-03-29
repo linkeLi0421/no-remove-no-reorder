@@ -53,6 +53,16 @@
 
 using namespace llvm;
 
+static cl::opt<bool> EnableMyMIRDumperPass("my-mir-dumper",
+                                cl::desc("Enable my pass for dumping "
+                                         "Machine IR information"),
+                                cl::init(false), cl::Hidden);
+
+static cl::opt<bool> EnableMyIRDumperPass("my-ir-dumper",
+                                cl::desc("Enable my pass for dumping "
+                                         "Machine IR information"),
+                                cl::init(false), cl::Hidden);
+
 static cl::opt<bool>
     EnableIPRA("enable-ipra", cl::init(false), cl::Hidden,
                cl::desc("Enable interprocedural register allocation "
@@ -1087,6 +1097,8 @@ bool TargetPassConfig::addCoreISelPasses() {
 
 bool TargetPassConfig::addISelPasses() {
   addPass(createMarkInstIndexPass());
+  if (EnableMyIRDumperPass)
+    addPass(createMyIRDumperPass());
 
   if (TM->useEmulatedTLS())
     addPass(createLowerEmuTLSPass());
@@ -1235,6 +1247,9 @@ void TargetPassConfig::addMachinePasses() {
         sampleprof::FSDiscriminatorPass::PassLast));
 
   addPreEmitPass();
+
+  if (EnableMyMIRDumperPass)
+     addPass(createMyMIRDumperPass());
 
   if (TM->Options.EnableIPRA)
     // Collect register usage information and produce a register mask of
