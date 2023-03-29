@@ -25,6 +25,8 @@ if (DEFINED LLVM_HAVE_TF_AOT OR DEFINED LLVM_HAVE_TF_API)
   endif()
 endif()
 
+INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/lib/MyProto)
+
 add_llvm_component_library(LLVMCodeGen
   AggressiveAntiDepBreaker.cpp
   AllocationOrder.cpp
