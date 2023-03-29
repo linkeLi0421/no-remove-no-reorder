@@ -40,19 +40,12 @@ namespace {
         MIR_func_book = new mirpb::MIRFunctionBook();
     }
 
-    MyMIRDumper(std::string prePassName) : MachineFunctionPass(ID) {
-        initializeMyMIRDumperPass(*PassRegistry::getPassRegistry());
-        MIR_func_book = new mirpb::MIRFunctionBook();
-        PrePassName = prePassName;
-        std::replace(PrePassName.begin(), PrePassName.end(), ' ', '_');
-    }
 
     bool runOnMachineFunction(MachineFunction &F) override;
     bool doFinalization(Module &M) override;
     bool doInitialization(Module &M) override;
 
     mirpb::MIRFunctionBook* MIR_func_book;
-    std::string PrePassName;
     std::string arch;
     std::string filepath;
   };
@@ -105,6 +98,10 @@ bool MyMIRDumper::runOnMachineFunction(MachineFunction &MF) {
         // repeated MIRInst MIs
         for (MachineBasicBlock::instr_iterator
          MI = MBB.instr_begin(), E = MBB.instr_end(); MI != E; ++MI) {
+            if (!MI->getMetadata("noreorder") && !MI->getMetadata("noremove")) {
+                // tag in source code
+                continue;
+            }
             // if(MI->isDebugInstr()) 
             //     continue;
             mirpb::MIRInst *MIMsg = MBBMsg->add_mis();
@@ -225,21 +222,15 @@ bool MyMIRDumper::doFinalization(Module &M) {
             outs() << "file "<< ("./MIRlog/" + MyMIRDumper::arch).c_str() <<" create failed.\n";
     }
     // create pass dir
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), '/', '_');
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), '&', '_');
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), '(', '_');
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), ')', '_');
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), '\'', '_');
-    std::replace(MyMIRDumper::PrePassName.begin(), MyMIRDumper::PrePassName.end(), '>', '_');
-    if (!file_exist("./MIRlog/" + MyMIRDumper::arch + "/" + MyMIRDumper::PrePassName)){
-        int isCreate = mkdir(("./MIRlog/" + MyMIRDumper::arch + "/" + MyMIRDumper::PrePassName).c_str(), S_IRWXU);
+    if (!file_exist("./MIRlog/" + MyMIRDumper::arch)){
+        int isCreate = mkdir(("./MIRlog/" + MyMIRDumper::arch + "/").c_str(), S_IRWXU);
         if(isCreate)
-            outs() << "file "<< ("./MIRlog/" + MyMIRDumper::arch + "/" + MyMIRDumper::PrePassName).c_str() <<" create failed.\n";
+            outs() << "file "<< ("./MIRlog/" + MyMIRDumper::arch + "/").c_str() <<" create failed.\n";
     }
     std::string filename = M.getName().str();
     std::string file = filename.substr(filename.find('/') + 1);
     std::replace(file.begin(), file.end(), '/', '_');
-    std::fstream output("./MIRlog/" + MyMIRDumper::arch + "/" + MyMIRDumper::PrePassName 
+    std::fstream output("./MIRlog/" + MyMIRDumper::arch
         + "/" + file + ".MIRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
     if (!MIR_func_book->SerializePartialToOstream(&output)) {
         outs() << "Failed to write msg. \n";
@@ -253,6 +244,6 @@ bool MyMIRDumper::doFinalization(Module &M) {
 INITIALIZE_PASS(MyMIRDumper, "MyMIRDumper",
                 "Dump MIR Info before CodeGen", false, false)
 
-MachineFunctionPass *llvm::createMyMIRDumperPass(std::string prePassName) {
-    return new MyMIRDumper(prePassName);
+MachineFunctionPass *llvm::createMyMIRDumperPass() {
+    return new MyMIRDumper();
 }  
