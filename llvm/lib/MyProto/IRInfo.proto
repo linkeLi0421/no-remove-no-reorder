@@ -24,6 +24,9 @@ message IRInst {
     repeated InstLoc Locs = 3;
     InstIndex Idx = 5;
     InstIndexList Idxs = 6;
+    string TestMode = 7;
+    string ReorderTagName = 8;
+    uint32 ReorderTagNum = 9;
 }
 
 message IRBasicBlock {

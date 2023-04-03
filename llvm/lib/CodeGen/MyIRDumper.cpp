@@ -59,18 +59,11 @@ namespace {
         initializeMyIRDumperPass(*PassRegistry::getPassRegistry());
         IR_func_book = new irpb::IRFunctionBook();
     }
-    MyIRDumper(std::string prePassName) : FunctionPass(ID) {
-        initializeMyIRDumperPass(*PassRegistry::getPassRegistry());
-        IR_func_book = new irpb::IRFunctionBook();
-        PrePassName = prePassName;
-        std::replace(PrePassName.begin(), PrePassName.end(), ' ', '_');
-    }
 
     bool runOnFunction(Function &F) override;
     bool doFinalization(Module &M) override;
     bool doInitialization(Module &M) override;
 
-    std::string PrePassName;
     irpb::IRFunctionBook* IR_func_book;
     std::string arch;
     std::string filepath;
@@ -79,7 +72,7 @@ namespace {
 
 char MyIRDumper::ID = 0;
 
-std::string getBBLabel(const llvm::BasicBlock *Node) {
+static std::string getBBLabel(const llvm::BasicBlock *Node) {
     if (!Node) 
         return "NULL_BB";
 
@@ -107,12 +100,33 @@ bool MyIRDumper::runOnFunction(Function &F) {
         // repeated IRInst MIs
         for (auto &I : BB) {
             if (!I.getMetadata("noreorder") && !I.getMetadata("noremove")) {
-                // tag in source code
+                // not tagged in source code
                 continue;
             }
             if(I.isDebugOrPseudoInst())
                 continue;
             irpb::IRInst *IMsg = BBMsg->add_is();
+
+            // tag noremove
+            if (MDNode *N = I.getMetadata("noremove")) {
+                IMsg->set_testmode("noremove");
+            }
+            // tag noreorder
+            if (MDNode *N = I.getMetadata("noreorder")) {
+                IMsg->set_testmode("noreorder");
+                for (unsigned int i = 0; i < N->getNumOperands(); i++) {
+                    llvm::Metadata* Data = N->getOperand(i).get();
+                    // Use the metadata as needed
+                    if (auto s = dyn_cast<MDString>(Data)) {
+                        IMsg->set_reordertagname(s->getString().str());
+                    }
+                    else if (auto index = dyn_cast<ConstantAsMetadata>(Data)) {
+                        ConstantInt* const_index = cast<ConstantInt>(index->getValue());
+                        unsigned tag_num = const_index->getZExtValue();
+                        IMsg->set_reordertagnum(tag_num);
+                    }
+                }
+            }
 
             std::string opcodeName = I.getOpcodeName();
             IMsg->set_opcode(opcodeName);
@@ -231,187 +245,28 @@ bool MyIRDumper::doFinalization(Module &M) {
         if(isCreate)
             outs() << "file "<< ("./IRlog/" + MyIRDumper::arch).c_str() <<" create failed.\n";
     }
-    // create pass dir
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), '/', '_');
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), '/', '_');
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), '&', '_');
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), '(', '_');
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), ')', '_');
-    std::replace(MyIRDumper::PrePassName.begin(), MyIRDumper::PrePassName.end(), '\'', '_');
-    if (!file_exist("./IRlog/" + MyIRDumper::arch + "/" + MyIRDumper::PrePassName)){
-        int isCreate = mkdir(("./IRlog/" + MyIRDumper::arch + "/" + MyIRDumper::PrePassName).c_str(), S_IRWXU);
-        if(isCreate)
-            outs() << "file "<< "./IRlog/" + MyIRDumper::arch + "/" + MyIRDumper::PrePassName <<" create failed.\n";
-    }
+
     std::string filename = M.getName().str();
     std::string file = filename.substr(filename.find('/') + 1);
     std::replace(file.begin(), file.end(), '/', '_');
-    std::fstream output("./IRlog/" + MyIRDumper::arch + "/" + MyIRDumper::PrePassName
-         + '/' + file + ".IRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
-    outs() << IR_func_book->arch() << '\n';
+    std::fstream output("./IRlog/" + MyIRDumper::arch + "/" + file + ".IRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
     if (!IR_func_book->SerializePartialToOstream(&output)) {
         outs() << "Failed to write IR msg. \n";
         output.close();
         return true;
     }
     output.close();
-    outs() << "Finish of dumping IR Info. \n";
     return false;
 }
 
 INITIALIZE_PASS(MyIRDumper, "MyIRDumper",
                 "Dump IR Info before CodeGen", false, false)
 
-FunctionPass *llvm::createMyIRDumperPass(std::string prePassName) {
-  return new MyIRDumper(prePassName);
+FunctionPass *llvm::createMyIRDumperPass() {
+  return new MyIRDumper();
 }
 
 inline bool file_exist (const std::string& name) {
   struct stat buffer;   
   return (stat (name.c_str(), &buffer) == 0); 
-}
-
-PreservedAnalyses MyIRDumperPass::run(Module &M, ModuleAnalysisManager &AM) {
-    irpb::IRFunctionBook* IR_func_book = new irpb::IRFunctionBook();
-    // test protobuf
-    GOOGLE_PROTOBUF_VERIFY_VERSION;
-
-    // get arch from Targrt Triple
-    std::string triple = M.getTargetTriple();
-    char* triple_buffer = new char[triple.size() + 1];
-    std::strcpy(triple_buffer, triple.c_str());
-    std::string delim = "-";
-    char *arch_p = strtok(triple_buffer, delim.c_str());
-    std::string arch(arch_p);
-
-    // set arch
-    IR_func_book->set_arch(arch);
-    for (auto &F : M){
-        const std::string &FName = F.getName().str();
-        irpb::IRFunction *FMsg = IR_func_book->add_fs();
-        FMsg->set_funcname(FName);
-
-        // repeated IRBasicBlock MBBs
-        for (auto &BB : F) {
-            irpb::IRBasicBlock *BBMsg = FMsg->add_bbs();
-            const std::string &BBID = getBBLabel(&BB);
-            BBMsg->set_bblabel(BBID);
-
-            // repeated IRInst MIs
-            for (auto &I : BB) {
-                irpb::IRInst *IMsg = BBMsg->add_is();
-
-                std::string opcodeName = I.getOpcodeName();
-                IMsg->set_opcode(opcodeName);
-
-                DebugLoc DL = I.getDebugLoc();
-                InstIndex *II = I.getInstIndex();
-                InstIndexSet IIS = I.getInstIndexSet();
-
-                if (II) {
-                    irpb::InstIndex *IIMsg = new irpb::InstIndex();
-                    std::string funcName = II->getFuncName();
-                    std::string bbLabel = II->getBBLabel();
-                    unsigned instNo = II->getInstNum();
-                    IIMsg->set_funcname(funcName);
-                    IIMsg->set_bblabel(bbLabel);
-                    IIMsg->set_instno(instNo);
-                    IMsg->set_allocated_idx(IIMsg);
-                }
-                
-
-                irpb::InstIndexList *IISMsg = new irpb::InstIndexList();
-                InstIndexSet::iterator it = IIS.begin();
-                // repeated InstIndex
-                for (; it != IIS.end(); ++it) {
-                    if (*it == nullptr) continue;
-                    irpb::InstIndex *tmpII = IISMsg->add_idxs();
-                    std::string tmpfuncName = (*it)->getFuncName();
-                    std::string tmpbbLabel = (*it)->getBBLabel();
-                    unsigned tmpinstNo = (*it)->getInstNum();
-                    tmpII->set_funcname(tmpfuncName);
-                    tmpII->set_bblabel(tmpbbLabel);
-                    tmpII->set_instno(tmpinstNo);
-                }
-                IMsg->set_allocated_idxs(IISMsg);
-
-
-                DebuginfoList DIL;
-                bool status = false;
-                I.getDebugInfoTree(DIL, status);
-                if (status) {
-                    for (auto &DebugInfo : DIL) {
-                        irpb::InstLoc *LocMsg = IMsg->add_locs();
-                        LocMsg->set_filename(std::get<0>(DebugInfo));
-                        LocMsg->set_lineno(std::get<1>(DebugInfo));
-                        LocMsg->set_colno(std::get<2>(DebugInfo));
-                    }
-                }
-            }
-
-            // repeated string SuccMBBLabel
-            for (BasicBlock *S : successors(&BB)) {
-                const std::string &SuccBB = S->getName().str();
-                BBMsg->add_succbblabel(SuccBB); 
-            BBMsg->add_succbblabel(SuccBB); 
-                BBMsg->add_succbblabel(SuccBB); 
-            }
-
-            // repeated string PredMBBLabel
-            for (BasicBlock *P : predecessors(&BB)) {
-                const std::string &PredBB = P->getName().str();
-                BBMsg->add_predbblabel(PredBB); 
-            BBMsg->add_predbblabel(PredBB); 
-                BBMsg->add_predbblabel(PredBB); 
-            }
-
-        }
-    }
-
-
-    // copy from finalization
-    if (!file_exist("./IRlog")){
-        int isCreate = mkdir("./IRlog", S_IRWXU);
-        if(isCreate)
-            outs() << "file ./IRlog create failed.\n";
-    }
-    // create arch dir
-    if (!file_exist("./IRlog/" + arch)){
-        int isCreate = mkdir(("./IRlog/" + arch).c_str(), S_IRWXU);
-        if(isCreate)
-            outs() << "file "<< ("./IRlog/" + arch).c_str() <<" create failed.\n";
-    }
-    // create pass dir
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), '/', '_');
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), '/', '_');
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), '&', '_');
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), '(', '_');
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), ')', '_');
-    std::replace(MyIRDumperPass::PassName.begin(), MyIRDumperPass::PassName.end(), '\'', '_');
-    if (!file_exist("./IRlog/" + arch + "/" + MyIRDumperPass::PassName)){
-        int isCreate = mkdir(("./IRlog/" + arch + "/" + MyIRDumperPass::PassName).c_str(), S_IRWXU);
-        if(isCreate)
-            outs() << "file "<< "./IRlog/" + arch + "/" + MyIRDumperPass::PassName <<" create failed.\n";
-    }
-    std::string filename = M.getName().str();
-    std::string file = filename.substr(filename.find('/') + 1);
-    std::replace(file.begin(), file.end(), '/', '_');
-    std::fstream output("./IRlog/" + arch + "/" + MyIRDumperPass::PassName
-         + '/' + file + ".IRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
-    outs() << IR_func_book->arch() << '\n';
-    if (!IR_func_book->SerializePartialToOstream(&output)) {
-        outs() << "Failed to write IR msg. \n";
-        output.close();
-    }
-    output.close();
-
-
-    return PreservedAnalyses::all();
-}
-
-MyIRDumperPass::MyIRDumperPass(std::string PassName){
-    MyIRDumperPass::PassName = PassName;
-}
-
-MyIRDumperPass::MyIRDumperPass(){
 }

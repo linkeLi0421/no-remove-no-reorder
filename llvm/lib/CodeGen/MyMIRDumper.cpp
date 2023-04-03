@@ -58,8 +58,7 @@ inline bool file_exist (const std::string& name) {
   return (stat (name.c_str(), &buffer) == 0); 
 }
 
-// extern std::string getBBLabel(const BasicBlock *Node);
-std::string getBBLabel(const llvm::BasicBlock *Node) {
+static std::string getBBLabel(const llvm::BasicBlock *Node) {
     if (!Node) 
         return "NULL_BB";
 
@@ -98,10 +97,6 @@ bool MyMIRDumper::runOnMachineFunction(MachineFunction &MF) {
         // repeated MIRInst MIs
         for (MachineBasicBlock::instr_iterator
          MI = MBB.instr_begin(), E = MBB.instr_end(); MI != E; ++MI) {
-            if (!MI->getMetadata("noreorder") && !MI->getMetadata("noremove")) {
-                // tag in source code
-                continue;
-            }
             // if(MI->isDebugInstr()) 
             //     continue;
             mirpb::MIRInst *MIMsg = MBBMsg->add_mis();
@@ -132,14 +127,12 @@ bool MyMIRDumper::runOnMachineFunction(MachineFunction &MF) {
                 bool FromSelect = II->MathFromSelect;
                 bool Merged = II->TailMerged;
                 bool Duplicated = II->TailDuplicated;
-                bool FromCopy = II->FromCopy;
                 IIMsg->set_funcname(funcName);
                 IIMsg->set_bblabel(bbLabel);
                 IIMsg->set_instno(instNo);
                 IIMsg->set_mathfromselect(FromSelect);
                 IIMsg->set_tailmerged(Merged);
                 IIMsg->set_tailduplicated(Duplicated);
-                IIMsg->set_fromcopy(FromCopy);
                 MIMsg->set_allocated_idx(IIMsg);
             }
 
@@ -220,12 +213,6 @@ bool MyMIRDumper::doFinalization(Module &M) {
         int isCreate = mkdir(("./MIRlog/" + MyMIRDumper::arch).c_str(), S_IRWXU);
         if(isCreate)
             outs() << "file "<< ("./MIRlog/" + MyMIRDumper::arch).c_str() <<" create failed.\n";
-    }
-    // create pass dir
-    if (!file_exist("./MIRlog/" + MyMIRDumper::arch)){
-        int isCreate = mkdir(("./MIRlog/" + MyMIRDumper::arch + "/").c_str(), S_IRWXU);
-        if(isCreate)
-            outs() << "file "<< ("./MIRlog/" + MyMIRDumper::arch + "/").c_str() <<" create failed.\n";
     }
     std::string filename = M.getName().str();
     std::string file = filename.substr(filename.find('/') + 1);
