@@ -49,8 +49,10 @@ static cl::opt<bool> PrintSlotIndexes(
 MachineBasicBlock::MachineBasicBlock(MachineFunction &MF, const BasicBlock *B)
     : BB(B), Number(-1), xParent(&MF) {
   Insts.Parent = this;
-  if (B)
+  if (B){
     IrrLoopHeaderWeight = B->getIrrLoopHeaderWeight();
+    appendBasicBlockSet(B);
+  }
 }
 
 MachineBasicBlock::~MachineBasicBlock() {
@@ -358,6 +360,19 @@ void MachineBasicBlock::print(raw_ostream &OS, ModuleSlotTracker &MST,
     OS << Indexes->getMBBStartIdx(this) << '\t';
 
   printName(OS, PrintNameIr | PrintNameAttributes, &MST);
+  OS << "\nBBList:";
+  if (BBSet.size()) {
+    std::set<const BasicBlock*>::iterator itea = BBSet.begin();
+    for (; itea != BBSet.end(); ++itea) {
+      if ((*itea)->hasName()) {
+        OS << (*itea)->getName();
+        auto next = itea;
+        if (++next != BBSet.end())
+          OS << ",";
+      }
+    }
+  }
+
   OS << ":\n";
 
   const TargetRegisterInfo *TRI = MF->getSubtarget().getRegisterInfo();
@@ -1018,6 +1033,16 @@ MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
   DebugLoc DL;  // FIXME: this is nowhere
 
   MachineBasicBlock *NMBB = MF->CreateMachineBasicBlock();
+  if (this->getBasicBlock()) {
+    NMBB->setBasicBlock(this->getBasicBlock());
+    if (this->getBBSet().size()) {
+      NMBB->appendBasicBlockSet(this->getBBSet());
+    }
+    else {
+      NMBB->appendBasicBlockSet(this->getBasicBlock());
+    }
+  }
+
   MF->insert(std::next(MachineFunction::iterator(this)), NMBB);
   LLVM_DEBUG(dbgs() << "Splitting critical edge: " << printMBBReference(*this)
                     << " -- " << printMBBReference(*NMBB) << " -- "
@@ -1416,9 +1441,6 @@ MachineBasicBlock::findBranchDebugLoc() {
 
   if (TI != end()) {
     DL = TI->getDebugLoc();
-    for (++TI ; TI != end() ; ++TI)
-      if (TI->isBranch())
-        DL = DILocation::getMergedLocation(DL, TI->getDebugLoc());
   }
   return DL;
 }
