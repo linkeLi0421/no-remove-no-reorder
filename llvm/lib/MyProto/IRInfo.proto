@@ -27,6 +27,7 @@ message IRInst {
     string TestMode = 7;
     string ReorderTagName = 8;
     uint32 ReorderTagNum = 9;
+    string RemoveTagName = 10;
 }
 
 message IRBasicBlock {

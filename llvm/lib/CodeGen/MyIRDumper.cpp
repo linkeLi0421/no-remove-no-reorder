@@ -99,7 +99,7 @@ bool MyIRDumper::runOnFunction(Function &F) {
 
         // repeated IRInst MIs
         for (auto &I : BB) {
-            if (!I.getMetadata("noreorder") && !I.getMetadata("noremove")) {
+            if (!I.getMetadata("noreorder") && !I.getMetadata("noremove") && !BB.hasNPredecessorsOrMore(0)) {
                 // not tagged in source code
                 continue;
             }
@@ -110,6 +110,7 @@ bool MyIRDumper::runOnFunction(Function &F) {
             // tag noremove
             if (MDNode *N = I.getMetadata("noremove")) {
                 IMsg->set_testmode("noremove");
+                IMsg->set_removetagname(cast<MDString>(N->getOperand(0))->getString().str());
             }
             // tag noreorder
             if (MDNode *N = I.getMetadata("noreorder")) {
