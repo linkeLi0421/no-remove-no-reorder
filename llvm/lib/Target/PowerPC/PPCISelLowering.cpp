@@ -13603,6 +13603,13 @@ SDValue PPCTargetLowering::DAGCombineExtBoolTrunc(SDNode *N,
   SelectionDAG &DAG = DCI.DAG;
   SDLoc dl(N);
 
+  // these opcode contain more useful logic info than N
+  if (N->getOperand(0)->getOpcode() == ISD::SELECT ||
+      N->getOperand(0)->getOpcode() == ISD::SELECT_CC ||
+      N->getOperand(0)->getOpcode() == ISD::SETCC){
+    dl.setInstIndex(N->getOperand(0)->getInstIndex());
+  }
+
   // If we're tracking CR bits, we need to be careful that we don't have:
   //   zext(binary-ops(trunc(x), trunc(y)))
   // or
@@ -13847,6 +13854,18 @@ SDValue PPCTargetLowering::DAGCombineExtBoolTrunc(SDNode *N,
         Ops[1] = DAG.getNode(ISD::TRUNCATE, dl, SI1->second, Ops[1]);
     }
 
+    if (PromOp.getOpcode() == ISD::SELECT ||
+        PromOp.getOpcode() == ISD::SELECT_CC ||
+        PromOp.getOpcode() == ISD::SETCC ) {
+      if (dl.getInstIndex() && PromOp.getNode()->getInstIndex()) {
+        dl.getInstIndex()->TailMerged = 1;
+        dl.getInstIndex()->MathFromSelect |= PromOp.getNode()->getInstIndex()->MathFromSelect;
+        dl.appendInstIndexSet(PromOp.getNode()->getInstIndexSet());
+      } 
+      else if (PromOp.getNode()->getInstIndex()) {
+        dl.setInstIndex(PromOp.getNode()->getInstIndex());
+      }
+    }
     DAG.ReplaceAllUsesOfValueWith(PromOp,
       DAG.getNode(PromOp.getOpcode(), dl, N->getValueType(0), Ops));
   }
