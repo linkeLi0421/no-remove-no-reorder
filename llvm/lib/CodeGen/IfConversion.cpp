@@ -277,10 +277,12 @@ namespace {
     void PredicateBlock(BBInfo &BBI,
                         MachineBasicBlock::iterator E,
                         SmallVectorImpl<MachineOperand> &Cond,
-                        SmallSet<MCPhysReg, 4> *LaterRedefs = nullptr);
+                        SmallSet<MCPhysReg, 4> *LaterRedefs = nullptr,
+                        DebugLoc dl = nullptr);
     void CopyAndPredicateBlock(BBInfo &ToBBI, BBInfo &FromBBI,
                                SmallVectorImpl<MachineOperand> &Cond,
-                               bool IgnoreBr = false);
+                               bool IgnoreBr = false,
+                               DebugLoc dl = nullptr);
     void MergeBlocks(BBInfo &ToBBI, BBInfo &FromBBI, bool AddEdges = true);
 
     bool MeetIfcvtSizeLimit(MachineBasicBlock &BB,
@@ -622,7 +624,8 @@ static MachineBasicBlock *findFalseBlock(MachineBasicBlock *BB,
 /// Reverse the condition of the end of the block branch. Swap block's 'true'
 /// and 'false' successors.
 bool IfConverter::reverseBranchCondition(BBInfo &BBI) const {
-  DebugLoc dl;  // FIXME: this is nowhere
+  DebugLoc dl;
+  dl = BBI.BB->findBranchDebugLoc();
   if (!TII->reverseBranchCondition(BBI.BrCond)) {
     TII->removeBranch(*BBI.BB);
     TII->insertBranch(*BBI.BB, BBI.FalseBB, BBI.TrueBB, BBI.BrCond, dl);
@@ -1536,6 +1539,7 @@ bool IfConverter::IfConvertSimple(BBInfo &BBI, IfcvtKind Kind) {
   BBInfo &FalseBBI = BBAnalysis[BBI.FalseBB->getNumber()];
   BBInfo *CvtBBI = &TrueBBI;
   BBInfo *NextBBI = &FalseBBI;
+  DebugLoc dl = BBI.BB->findBranchDebugLoc();
 
   SmallVector<MachineOperand, 4> Cond(BBI.BrCond.begin(), BBI.BrCond.end());
   if (Kind == ICSimpleFalse)
@@ -1575,13 +1579,13 @@ bool IfConverter::IfConvertSimple(BBInfo &BBI, IfcvtKind Kind) {
   if (CvtMBB.pred_size() > 1) {
     // Copy instructions in the true block, predicate them, and add them to
     // the entry block.
-    CopyAndPredicateBlock(BBI, *CvtBBI, Cond);
+    CopyAndPredicateBlock(BBI, *CvtBBI, Cond, false, dl);
 
     // Keep the CFG updated.
     BBI.BB->removeSuccessor(&CvtMBB, true);
   } else {
     // Predicate the instructions in the true block.
-    PredicateBlock(*CvtBBI, CvtMBB.end(), Cond);
+    PredicateBlock(*CvtBBI, CvtMBB.end(), Cond, nullptr, dl);
 
     // Merge converted block into entry block. The BB to Cvt edge is removed
     // by MergeBlocks.
@@ -1626,6 +1630,9 @@ bool IfConverter::IfConvertTriangle(BBInfo &BBI, IfcvtKind Kind) {
   SmallVector<MachineOperand, 4> Cond(BBI.BrCond.begin(), BBI.BrCond.end());
   if (Kind == ICTriangleFalse || Kind == ICTriangleFRev)
     std::swap(CvtBBI, NextBBI);
+
+  dl = CvtBBI->BB->findBranchDebugLoc();
+  DebugLoc sdl = BBI.BB->findBranchDebugLoc();
 
   MachineBasicBlock &CvtMBB = *CvtBBI->BB;
   MachineBasicBlock &NextMBB = *NextBBI->BB;
@@ -1687,11 +1694,11 @@ bool IfConverter::IfConvertTriangle(BBInfo &BBI, IfcvtKind Kind) {
   if (CvtMBB.pred_size() > 1) {
     // Copy instructions in the true block, predicate them, and add them to
     // the entry block.
-    CopyAndPredicateBlock(BBI, *CvtBBI, Cond, true);
+    CopyAndPredicateBlock(BBI, *CvtBBI, Cond, true, sdl);
   } else {
     // Predicate the 'true' block after removing its branch.
     CvtBBI->NonPredSize -= TII->removeBranch(CvtMBB);
-    PredicateBlock(*CvtBBI, CvtMBB.end(), Cond);
+    PredicateBlock(*CvtBBI, CvtMBB.end(), Cond, nullptr, sdl);
 
     // Now merge the entry of the triangle with the true block.
     MergeBlocks(BBI, *CvtBBI, false);
@@ -1813,6 +1820,8 @@ bool IfConverter::IfConvertDiamondCommon(
     std::swap(BBI1, BBI2);
     std::swap(Cond1, Cond2);
   }
+
+  DebugLoc dl = BBI.BB->findBranchDebugLoc();
 
   // Remove the conditional branch from entry to the blocks.
   BBI.NonPredSize -= TII->removeBranch(*BBI.BB);
@@ -1977,7 +1986,7 @@ bool IfConverter::IfConvertDiamondCommon(
   }
 
   // Predicate the 'true' block.
-  PredicateBlock(*BBI1, MBB1.end(), *Cond1, &RedefsByFalse);
+  PredicateBlock(*BBI1, MBB1.end(), *Cond1, &RedefsByFalse, dl);
 
   // After predicating BBI1, if there is a predicated terminator in BBI1 and
   // a non-predicated in BBI2, then we don't want to predicate the one from
@@ -1996,7 +2005,7 @@ bool IfConverter::IfConvertDiamondCommon(
   }
 
   // Predicate the 'false' block.
-  PredicateBlock(*BBI2, DI2, *Cond2);
+  PredicateBlock(*BBI2, DI2, *Cond2, nullptr, dl);
 
   // Merge the true block into the entry of the diamond.
   MergeBlocks(BBI, *BBI1, MergeAddEdges);
@@ -2014,7 +2023,7 @@ bool IfConverter::IfConvertForkedDiamond(
   BBInfo &FalseBBI = BBAnalysis[BBI.FalseBB->getNumber()];
 
   // Save the debug location for later.
-  DebugLoc dl;
+  DebugLoc dl = TrueBBI.BB->findBranchDebugLoc();
   MachineBasicBlock::iterator TIE = TrueBBI.BB->getFirstTerminator();
   if (TIE != TrueBBI.BB->end())
     dl = TIE->getDebugLoc();
@@ -2135,7 +2144,9 @@ static bool MaySpeculate(const MachineInstr &MI,
 void IfConverter::PredicateBlock(BBInfo &BBI,
                                  MachineBasicBlock::iterator E,
                                  SmallVectorImpl<MachineOperand> &Cond,
-                                 SmallSet<MCPhysReg, 4> *LaterRedefs) {
+                                 SmallSet<MCPhysReg, 4> *LaterRedefs,
+                                 // dingzhu patch
+                                 DebugLoc dl) {
   bool AnyUnpred = false;
   bool MaySpec = LaterRedefs != nullptr;
   for (MachineInstr &I : make_range(BBI.BB->begin(), E)) {
@@ -2157,6 +2168,20 @@ void IfConverter::PredicateBlock(BBInfo &BBI,
 #endif
       llvm_unreachable(nullptr);
     }
+    else {
+      // check if this instr is a cond-solver. if yes, don't change its Index
+      if (!I.isCondSolver()) {
+        I.setInstIndex(dl.getInstIndex());
+        I.appendInstIndexSet(dl.getInstIndexSet());
+      }
+      else {
+        InstIndex *II = I.getInstIndex();
+        if (II) {
+          II->TailMerged = 1;
+        }
+        I.appendInstIndexSet(dl.getInstIndexSet());
+      }
+    }
 
     // If the predicated instruction now redefines a register as the result of
     // if-conversion, add an implicit kill.
@@ -2177,7 +2202,8 @@ void IfConverter::PredicateBlock(BBInfo &BBI,
 /// Skip end of block branches if IgnoreBr is true.
 void IfConverter::CopyAndPredicateBlock(BBInfo &ToBBI, BBInfo &FromBBI,
                                         SmallVectorImpl<MachineOperand> &Cond,
-                                        bool IgnoreBr) {
+                                        bool IgnoreBr,
+                                        DebugLoc dl) {
   MachineFunction &MF = *ToBBI.BB->getParent();
 
   MachineBasicBlock &FromMBB = *FromBBI.BB;
@@ -2205,6 +2231,10 @@ void IfConverter::CopyAndPredicateBlock(BBInfo &ToBBI, BBInfo &FromBBI,
         dbgs() << "Unable to predicate " << I << "!\n";
 #endif
         llvm_unreachable(nullptr);
+      }
+      else {
+        MI->setInstIndex(dl.getInstIndex());
+        MI->appendInstIndexSet(dl.getInstIndexSet());
       }
     }
 
@@ -2243,6 +2273,9 @@ void IfConverter::CopyAndPredicateBlock(BBInfo &ToBBI, BBInfo &FromBBI,
 /// edge from ToBBI to FromBBI.
 void IfConverter::MergeBlocks(BBInfo &ToBBI, BBInfo &FromBBI, bool AddEdges) {
   MachineBasicBlock &FromMBB = *FromBBI.BB;
+  
+  ToBBI.BB->appendBasicBlockSet(FromBBI.BB->getBBSet());
+
   assert(!FromMBB.hasAddressTaken() &&
          "Removing a BB whose address is taken!");
 
