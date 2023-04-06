@@ -44,6 +44,7 @@ static cl::opt<bool>
 namespace {
 class PPCExpandISEL : public MachineFunctionPass {
   DebugLoc dl;
+  DebugLoc bdl;
   MachineFunction *MF;
   const TargetInstrInfo *TII;
   bool IsTrueBlockRequired;
@@ -201,6 +202,7 @@ void PPCExpandISEL::expandAndMergeISELs() {
     auto E = CurrentISELList.end();
 
     while (I != E) {
+      bdl = DebugLoc((*I)->getDebugLoc().get());
       assert(isISEL(**I) && "Expecting an ISEL instruction");
       MachineOperand &Dest = (*I)->getOperand(0);
       MachineOperand &TrueValue = (*I)->getOperand(1);
@@ -407,7 +409,7 @@ void PPCExpandISEL::reorganizeBlockLayout(BlockISELList &BIL,
   }
 
   // Conditional branch to the TrueBlock or Successor
-  BuildMI(*MBB, BIL.back(), dl, TII->get(PPC::BC))
+  BuildMI(*MBB, BIL.back(), bdl, TII->get(PPC::BC))
       .add(BIL.back()->getOperand(3))
       .addMBB(IsTrueBlockRequired ? TrueBlock : Successor);
 
@@ -478,6 +480,16 @@ void PPCExpandISEL::populateBlocks(BlockISELList &BIL) {
 void PPCExpandISEL::expandMergeableISELs(BlockISELList &BIL) {
   // At this stage all the ISELs of BIL are in the same MBB.
   MachineBasicBlock *MBB = BIL.back()->getParent();
+  for (auto isel : BIL) {
+    if (bdl.getInstIndex() && isel->getDebugLoc().getInstIndex()){
+      bdl.getInstIndex()->TailMerged = 1;
+      bdl.getInstIndex()->MathFromSelect |= isel->getDebugLoc().getInstIndex()->MathFromSelect;
+      bdl.appendInstIndexSet(isel->getDebugLoc().getInstIndex());
+    }
+    else if (isel->getDebugLoc().getInstIndex()) {
+      bdl.setInstIndex(isel->getDebugLoc().getInstIndex());
+    }
+  }
 
   handleSpecialCases(BIL, MBB);
   reorganizeBlockLayout(BIL, MBB);
