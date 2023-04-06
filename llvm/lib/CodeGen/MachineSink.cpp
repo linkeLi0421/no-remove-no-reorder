@@ -1099,10 +1099,18 @@ static void performSink(MachineInstr &MI, MachineBasicBlock &SuccToSinkTo,
   // location to prevent debug-info driven tools from potentially reporting
   // wrong location information.
   if (!SuccToSinkTo.empty() && InsertPos != SuccToSinkTo.end())
-    MI.setDebugLoc(DILocation::getMergedLocation(MI.getDebugLoc(),
-                                                 InsertPos->getDebugLoc()));
-  else
-    MI.setDebugLoc(DebugLoc());
+  {
+    DebugLoc DL = DILocation::getMergedLocation(MI.getDebugLoc(), InsertPos->getDebugLoc());
+    DL.setInstIndex(MI.getInstIndex());
+    DL.setInstIndexSet(MI.getInstIndexSet());
+    DL.appendInstIndexSet(InsertPos->getInstIndexSet());
+    MI.setDebugLoc(DL);
+  }
+  else {
+    DebugLoc Newdl = DebugLoc();
+    Newdl.setInstIndex(MI.getInstIndex());
+    MI.setDebugLoc(Newdl);
+  }
 
   // Move the instruction.
   MachineBasicBlock *ParentBlock = MI.getParent();

@@ -913,8 +913,12 @@ bool ConstantHoistingPass::emitBaseConstants(GlobalVariable *BaseGV) {
         emitBaseConstants(Base, Off, Ty, U);
         ReBasesNum++;
         // Use the same debug location as the last user of the constant.
-        Base->setDebugLoc(DILocation::getMergedLocation(
-            Base->getDebugLoc(), U.Inst->getDebugLoc()));
+        DebugLoc DL = DILocation::getMergedLocation(
+            Base->getDebugLoc(), U.Inst->getDebugLoc());
+        DL.setInstIndex(Base->getInstIndex());
+        DL.setInstIndexSet(Base->getInstIndexSet());
+        DL.appendInstIndexSet(U.Inst->getInstIndexSet());
+        Base->setDebugLoc(DL);
       }
       assert(!Base->use_empty() && "The use list is empty!?");
       assert(isa<Instruction>(Base->user_back()) &&

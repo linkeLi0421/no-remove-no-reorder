@@ -60,6 +60,7 @@
 #include <cstddef>
 #include <iterator>
 #include <numeric>
+#include <map>
 
 using namespace llvm;
 
@@ -86,6 +87,8 @@ static cl::opt<unsigned>
 TailMergeSize("tail-merge-size",
               cl::desc("Min number of instructions to consider tail merging"),
               cl::init(3), cl::Hidden);
+
+std::map<MachineBasicBlock*, DebugLoc> Branch_debugLocs;
 
 namespace {
 
@@ -467,6 +470,10 @@ static void FixTail(MachineBasicBlock *CurMBB, MachineBasicBlock *SuccBB,
       }
     }
   }
+  DebugLoc newdbl = Branch_debugLocs[CurMBB];
+  if (newdbl.getInstIndex()) {
+    dl = newdbl;
+  }
   TII->insertBranch(*CurMBB, SuccBB, nullptr,
                     SmallVector<MachineOperand, 0>(), dl);
 }
@@ -731,6 +738,9 @@ bool BranchFolder::CreateCommonTailOnlyBlock(MachineBasicBlock *&PredBB,
     SameTails[commonTailIndex].getTailStartPos();
   MachineBasicBlock *MBB = SameTails[commonTailIndex].getBlock();
 
+  if (MBB->getBasicBlock())
+    MBB->appendBasicBlockSet(MBB->getBasicBlock());
+
   LLVM_DEBUG(dbgs() << "\nSplitting " << printMBBReference(*MBB) << ", size "
                     << maxCommonTailLength);
 
@@ -808,9 +818,22 @@ mergeOperations(MachineBasicBlock::iterator MBBIStartPos,
 void BranchFolder::mergeCommonTails(unsigned commonTailIndex) {
   MachineBasicBlock *MBB = SameTails[commonTailIndex].getBlock();
 
+  std::set<const BasicBlock*> BBs;
+  if (MBB->getBasicBlock())
+    MBB->appendBasicBlockSet(MBB->getBasicBlock());
+
   std::vector<MachineBasicBlock::iterator> NextCommonInsts(SameTails.size());
   for (unsigned int i = 0 ; i != SameTails.size() ; ++i) {
     if (i != commonTailIndex) {
+      if (SameTails[i].getBlock()->getBasicBlock()) {
+        if (SameTails[i].getBlock()->getBBSet().size()) {
+          BBs = SameTails[i].getBlock()->getBBSet();
+          MBB->appendBasicBlockSet(BBs);
+        }
+        else {
+          MBB->appendBasicBlockSet(SameTails[i].getBlock()->getBasicBlock());
+        }
+      }
       NextCommonInsts[i] = SameTails[i].getTailStartPos();
       mergeOperations(SameTails[i].getTailStartPos(), *MBB);
     } else {
@@ -823,6 +846,13 @@ void BranchFolder::mergeCommonTails(unsigned commonTailIndex) {
     if (!countsAsInstruction(MI))
       continue;
     DebugLoc DL = MI.getDebugLoc();
+    DebugLoc MDL(DL.get());
+    InstIndex* II = DL.getInstIndex();
+    if (II){
+      II->TailMerged = 1;
+    }
+    MDL.setInstIndex(DL.getInstIndex());
+    MDL.setInstIndexSet(DL.getInstIndexSet());
     for (unsigned int i = 0 ; i < NextCommonInsts.size() ; i++) {
       if (i == commonTailIndex)
         continue;
@@ -836,10 +866,17 @@ void BranchFolder::mergeCommonTails(unsigned commonTailIndex) {
             "Reached BB end within common tail");
       }
       assert(MI.isIdenticalTo(*Pos) && "Expected matching MIIs!");
-      DL = DILocation::getMergedLocation(DL, Pos->getDebugLoc());
+      MDL.appendInstIndexSet(Pos->getDebugLoc().getInstIndexSet());
       NextCommonInsts[i] = ++Pos;
     }
-    MI.setDebugLoc(DL);
+    InstIndexSet LabeledIIS;
+    for (InstIndexSet::iterator it = MDL.getInstIndexSet().begin(); it != MDL.getInstIndexSet().end(); ++it) {
+      if (*it == nullptr) continue;
+      (*it)->TailMerged = 1;
+      LabeledIIS.insert(*it);
+    }
+    MDL.setInstIndexSet(LabeledIIS);
+    MI.setDebugLoc(MDL);
   }
 
   if (UpdateLiveIns) {
@@ -1111,6 +1148,7 @@ bool BranchFolder::TailMergeBlocks(MachineFunction &MF) {
         // Remove the unconditional branch at the end, if any.
         if (TBB && (Cond.empty() || FBB)) {
           DebugLoc dl = PBB->findBranchDebugLoc();
+          Branch_debugLocs[PBB] = dl;
           TII->removeBranch(*PBB);
           if (!Cond.empty())
             // reinsert conditional branch only, for now
@@ -1255,10 +1293,21 @@ static bool IsBetterFallthrough(MachineBasicBlock *MBB1,
 /// getBranchDebugLoc - Find and return, if any, the DebugLoc of the branch
 /// instructions on the block.
 static DebugLoc getBranchDebugLoc(MachineBasicBlock &MBB) {
-  MachineBasicBlock::iterator I = MBB.getLastNonDebugInstr();
-  if (I != MBB.end() && I->isBranch())
-    return I->getDebugLoc();
-  return DebugLoc();
+  // dingzhu patch
+  DebugLoc DL;
+
+  MachineBasicBlock::iterator TI = MBB.getFirstTerminator();
+  while (TI != MBB.end() && !TI->isBranch())
+    ++TI;
+
+  if (TI != MBB.end()) {
+    DL = TI->getDebugLoc();
+    // Todo: there may be 2 branbch inst, we ignore the 2nd one as the first
+    // is conbined with cmp inst, which may cause bug as it's just an inference based
+    // on experience.
+  }
+
+  return DL;
 }
 
 static void copyDebugInfoToPredecessor(const TargetInstrInfo *TII,
