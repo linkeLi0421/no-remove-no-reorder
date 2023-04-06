@@ -112,6 +112,8 @@ private:
 
   Instructions Insts;
   const BasicBlock *BB;
+  /// dingzhu patch
+  std::set<const BasicBlock*> BBSet;
   int Number;
   MachineFunction *xParent;
 
@@ -204,6 +206,23 @@ public:
   /// Note that this may be NULL if this instance does not correspond directly
   /// to an LLVM basic block.
   const BasicBlock *getBasicBlock() const { return BB; }
+
+  bool setBasicBlock (const BasicBlock* TBB) {
+    if (BB) 
+       return false;
+    else { 
+      BB = TBB; 
+      return true; 
+    }
+  }
+
+  void setBasicBlockSet(std::set<const BasicBlock*> BBs) { BBSet = BBs; }
+
+  void appendBasicBlockSet(std::set<const BasicBlock*> BBs) { BBSet.insert(BBs.begin(), BBs.end()); }
+
+  void appendBasicBlockSet(const BasicBlock* BB) { BBSet.insert(BB); }
+
+  const std::set<const BasicBlock*> getBBSet() const { return BBSet;}
 
   /// Return the name of the corresponding LLVM basic block, or an empty string.
   StringRef getName() const;
