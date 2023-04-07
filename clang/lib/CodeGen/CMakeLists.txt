@@ -1,3 +1,5 @@
+INCLUDE_DIRECTORIES(${CMAKE_BINARY_DIR}/lib/MyProto)
+
 set(LLVM_LINK_COMPONENTS
   Analysis
   BitReader
@@ -25,6 +27,7 @@ set(LLVM_LINK_COMPONENTS
   Support
   Target
   TransformUtils
+  MyProto
   )
 
 add_clang_library(clangCodeGen
@@ -96,3 +99,6 @@ add_clang_library(clangCodeGen
   clangLex
   clangSerialization
   )
+
+find_package(Protobuf REQUIRED)
+target_link_libraries(clangCodeGen PRIVATE ${PROTOBUF_LIBRARY})

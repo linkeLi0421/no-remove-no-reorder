@@ -260,6 +260,8 @@ add_llvm_component_library(LLVMCodeGen
   TransformUtils
   )
 
+find_package(Protobuf REQUIRED)
+target_link_libraries(LLVMCodeGen PRIVATE ${PROTOBUF_LIBRARY})
 add_subdirectory(SelectionDAG)
 add_subdirectory(AsmPrinter)
 add_subdirectory(MIRParser)
