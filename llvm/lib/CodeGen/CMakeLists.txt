@@ -229,7 +229,6 @@ add_llvm_component_library(LLVMCodeGen
   WinEHPrepare.cpp
   XRayInstrumentation.cpp
   MyMIRDumper.cpp
-  MyIRDumper.cpp
   ${GeneratedMLSources}
 
   LiveDebugValues/LiveDebugValues.cpp

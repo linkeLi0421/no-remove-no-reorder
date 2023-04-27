@@ -58,10 +58,6 @@ static cl::opt<bool> EnableMyMIRDumperPass("my-mir-dumper",
                                          "Machine IR information"),
                                 cl::init(false), cl::Hidden);
 
-static cl::opt<bool> EnableMyIRDumperPass("my-ir-dumper",
-                                cl::desc("Enable my pass for dumping "
-                                         "Machine IR information"),
-                                cl::init(false), cl::Hidden);
 
 static cl::opt<bool>
     EnableIPRA("enable-ipra", cl::init(false), cl::Hidden,

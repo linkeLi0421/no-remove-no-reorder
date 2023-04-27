@@ -609,6 +609,8 @@ namespace clang {
         }
       }
 
+      bool tag_flag = 0;
+
       for (auto &F : getModule()->functions()) {
         for (auto &B : F) {
           for (auto &I : B) {
@@ -617,6 +619,7 @@ namespace clang {
               continue;
             unsigned Line = Loc.getLine();
             if (C.line_num_set.count(Line)) {
+              tag_flag = 1;
               // mark the instruction
               for(auto i : C.noremove_map) {
                 if (i.second == Line) {
@@ -649,7 +652,8 @@ namespace clang {
         MarkEveryInst(F);
       }
 
-      DoIRDumper(*getModule());
+      if (tag_flag)
+        DoIRDumper(*getModule());
 
       if (CodeGenOpts.ClearASTBeforeBackend) {
         LLVM_DEBUG(llvm::dbgs() << "Clearing AST...\n");

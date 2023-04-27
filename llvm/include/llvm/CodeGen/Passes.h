@@ -37,7 +37,6 @@ class raw_ostream;
 // List of target independent CodeGen pass IDs.
 namespace llvm {
 
-  FunctionPass *createMyIRDumperPass();
 
   MachineFunctionPass *createMyMIRDumperPass();
 
