@@ -123,11 +123,17 @@
 #include "llvm/Transforms/Utils/NameAnonGlobals.h"
 #include "llvm/Transforms/Utils/RelLookupTableConverter.h"
 #include "llvm/Transforms/Utils/SimplifyCFGOptions.h"
+#include "llvm/Transforms/Utils/MyIRDumper.h"
 #include "llvm/Transforms/Vectorize/LoopVectorize.h"
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
 
 using namespace llvm;
+
+static cl::opt<bool> EnableMyIRDumperPass("my-ir-dumper",
+                                 cl::desc("Enable my pass for dumping "
+                                          "Machine IR information"),
+                                 cl::init(false), cl::Hidden);
 
 static cl::opt<InliningAdvisorMode> UseInlineAdvisor(
     "enable-ml-inliner", cl::init(InliningAdvisorMode::Default), cl::Hidden,
@@ -1284,6 +1290,9 @@ PassBuilder::buildPerModuleDefaultPipeline(OptimizationLevel Level,
          "Must request optimizations for the default pipeline!");
 
   ModulePassManager MPM;
+  // Dump IR0 before all optimazations in middle end
+  if (EnableMyIRDumperPass)
+    MPM.addPass(MyIRDumperPass());
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1730,6 +1739,9 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
          "buildO0DefaultPipeline should only be used with O0");
 
   ModulePassManager MPM;
+  // Dump IR0 before all optimazations in middle end
+  if (EnableMyIRDumperPass)  
+    MPM.addPass(MyIRDumperPass());
 
   // Perform pseudo probe instrumentation in O0 mode. This is for the
   // consistency between different build modes. For example, a LTO build can be

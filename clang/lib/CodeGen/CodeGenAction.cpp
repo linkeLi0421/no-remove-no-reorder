@@ -652,8 +652,8 @@ namespace clang {
         MarkEveryInst(F);
       }
 
-      if (tag_flag)
-        DoIRDumper(*getModule());
+      // if (tag_flag)
+      //   DoIRDumper(*getModule());
 
       if (CodeGenOpts.ClearASTBeforeBackend) {
         LLVM_DEBUG(llvm::dbgs() << "Clearing AST...\n");
