@@ -132,7 +132,7 @@ using namespace llvm;
 
 static cl::opt<bool> EnableMyIRDumperPass("my-ir-dumper",
                                  cl::desc("Enable my pass for dumping "
-                                          "Machine IR information"),
+                                          "IR information"),
                                  cl::init(false), cl::Hidden);
 
 static cl::opt<InliningAdvisorMode> UseInlineAdvisor(

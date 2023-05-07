@@ -26,7 +26,7 @@ namespace llvm {
     // format: funcname, BBlabel, Inst num in bb
     std::string FuncName;
     std::string BBLabel;
-    int InstNum;
+    uint32_t InstNum;
 
   public:
     /// fields: used to represent what transformation this idx has gone through
@@ -55,7 +55,7 @@ namespace llvm {
       BBLabel = SrcBBLabel;
     }
 
-    void setInstNum(int SrcInstNum) {
+    void setInstNum(uint32_t SrcInstNum) {
       InstNum = SrcInstNum;
     }
 
@@ -93,6 +93,15 @@ namespace llvm {
 
     void print(raw_ostream &OS) const;
 
+  };
+
+  struct InstIndexHash {
+    std::size_t operator()(const InstIndex& index) const noexcept {
+      std::size_t h1 = std::hash<std::string>{}(index.getFuncName());
+      std::size_t h2 = std::hash<std::string>{}(index.getBBLabel());
+      std::size_t h3 = std::hash<uint32_t>{}(index.getInstNum());
+      return h1 ^ (h2 << 1) ^ (h3 << 2);
+    }
   };
 
 typedef std::set<InstIndex*> InstIndexSet;

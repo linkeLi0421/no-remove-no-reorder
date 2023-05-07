@@ -60,9 +60,6 @@ namespace {
         initializeMyIRDumperPass(*PassRegistry::getPassRegistry());
         IR_func_book = new irpb::IRFunctionBook();
     }
-    bool runOnFunction(Function &F) override;
-    bool doFinalization(Module &M) override;
-    bool doInitialization(Module &M) override;
 
     irpb::IRFunctionBook* IR_func_book;
     std::string arch;
@@ -104,6 +101,7 @@ PreservedAnalyses MyIRDumperPass::run(Module &M, ModuleAnalysisManager &AM) {
     char *arch_p = strtok(triple_buffer, delim.c_str());
     std::string arch(arch_p);
     irpb::IRFunctionBook* IR_func_book = new irpb::IRFunctionBook();
+    int tag_flag = 0;
 
     // set arch
     IR_func_book->set_arch(arch);
@@ -122,10 +120,11 @@ PreservedAnalyses MyIRDumperPass::run(Module &M, ModuleAnalysisManager &AM) {
 
         // repeated IRInst MIs
         for (auto &I : BB) {
-            if (!I.getMetadata("noreorder") && !I.getMetadata("noremove") && !BB.hasNPredecessorsOrMore(0)) {
+            if (!I.getMetadata("noreorder") && !I.getMetadata("noremove")) {
                 // not tagged in source code
                 continue;
             }
+            tag_flag = 1;
             if(I.isDebugOrPseudoInst())
                 continue;
             irpb::IRInst *IMsg = BBMsg->add_is();
@@ -233,29 +232,31 @@ PreservedAnalyses MyIRDumperPass::run(Module &M, ModuleAnalysisManager &AM) {
             }
     }
 
-    // finalization
-    // create IRlog dir
-    if (!file_exist("./IRlog")){
-        int isCreate = mkdir("./IRlog", S_IRWXU);
-        if(isCreate)
-            outs() << "file ./IRlog create failed.\n";
-    }
-    // create arch dir
-    if (!file_exist("./IRlog/" + arch)){
-        int isCreate = mkdir(("./IRlog/" + arch).c_str(), S_IRWXU);
-        if(isCreate)
-            outs() << "file "<< ("./IRlog/" + arch).c_str() <<" create failed.\n";
-    }
+    if (tag_flag){
+        // finalization
+        // create IRlog dir
+        if (!file_exist("./IRlog")){
+            int isCreate = mkdir("./IRlog", S_IRWXU);
+            if(isCreate)
+                outs() << "file ./IRlog create failed.\n";
+        }
+        // create arch dir
+        if (!file_exist("./IRlog/" + arch)){
+            int isCreate = mkdir(("./IRlog/" + arch).c_str(), S_IRWXU);
+            if(isCreate)
+                outs() << "file "<< ("./IRlog/" + arch).c_str() <<" create failed.\n";
+        }
 
-    std::string filename = M.getName().str();
-    std::string file = filename.substr(filename.find('/') + 1);
-    std::replace(file.begin(), file.end(), '/', '_');
-    std::fstream output("./IRlog/" + arch + "/" + file + ".IRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
-    if (!IR_func_book->SerializePartialToOstream(&output)) {
-        outs() << "Failed to write IR msg. \n";
+        std::string filename = M.getName().str();
+        std::string file = filename.substr(filename.find('/') + 1);
+        std::replace(file.begin(), file.end(), '/', '_');
+        std::fstream output("./IRlog/" + arch + "/" + file + ".IRInfo.log", std::ios::out | std::ios::trunc | std::ios::binary);
+        if (!IR_func_book->SerializePartialToOstream(&output)) {
+            outs() << "Failed to write IR msg. \n";
+            output.close();
+        }
         output.close();
     }
-    output.close();
 
     return PreservedAnalyses::all();
 }
