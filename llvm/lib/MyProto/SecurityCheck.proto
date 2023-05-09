@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+package pb; 
+
+message SecurityCheck {
+    string FileName = 6;
+    string FuncName = 1;
+    message InstLoc {
+        string FileName = 1;
+        uint32 LineNo = 2;
+        uint32 ColNo = 3;
+    }
+    message FirstRead {
+        repeated InstLoc FirstReadLoc = 4;
+        string FuncName = 1;
+        string BBLabel = 2;
+        uint32 InstNo = 3;
+    }
+    // cmp
+    repeated InstLoc CmpLoc = 2;
+    string CmpBBLabel = 3; // the BB index of cmp instr
+    uint32 CmpIndex = 5;
+    // cbr   
+    repeated InstLoc BrLoc = 7;
+    string BrBBLabel = 8;
+    uint32 BrIndex = 9;
+    // critical var may have several related value
+    repeated FirstRead FirstReads = 10;
+    // succ blocks as succ branches (weak) 
+    repeated string SuccBBLabel = 4;
+}
+
+message SecurityCheckBook {
+    repeated SecurityCheck SecurityChecks = 1;
+}
+
+message SecurityChecksInFile {
+    string FileName = 2;
+    repeated SecurityCheck SecurityChecks = 1;
+}
+
+message SecurityChecksOfArch {
+    string Architecture = 2;
+    repeated SecurityChecksInFile SecurityChecksInFiles = 1;
+}
+
+message SecurityChecksOfArches {
+    repeated SecurityChecksOfArch SecurityChecksOfArches = 1;
+}

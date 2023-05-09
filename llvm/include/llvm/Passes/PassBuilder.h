@@ -218,6 +218,8 @@ public:
   ModulePassManager buildModuleOptimizationPipeline(OptimizationLevel Level,
                                                     bool LTOPreLink = false);
 
+  ModulePassManager buildLabelManagePipeline();
+
   /// Build a per-module default optimization pipeline.
   ///
   /// This provides a good default optimization pipeline for per-module

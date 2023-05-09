@@ -466,6 +466,8 @@ void initializeXRayInstrumentationPass(PassRegistry&);
 void initializeMarkInstIndexPass(PassRegistry&);
 void initializeMyIRDumperPass(PassRegistry&);
 void initializeMyMIRDumperPass(PassRegistry&);
+void initializeAutoLabelPass(PassRegistry&);
+void initializeIRDumperPass(PassRegistry&);
 
 } // end namespace llvm
 

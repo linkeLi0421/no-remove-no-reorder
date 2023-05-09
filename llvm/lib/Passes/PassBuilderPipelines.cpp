@@ -124,6 +124,8 @@
 #include "llvm/Transforms/Utils/RelLookupTableConverter.h"
 #include "llvm/Transforms/Utils/SimplifyCFGOptions.h"
 #include "llvm/Transforms/Utils/MyIRDumper.h"
+#include "llvm/Transforms/Utils/AutoLabel.h"
+#include "llvm/Transforms/Utils/IRDumper.h"
 #include "llvm/Transforms/Vectorize/LoopVectorize.h"
 #include "llvm/Transforms/Vectorize/SLPVectorizer.h"
 #include "llvm/Transforms/Vectorize/VectorCombine.h"
@@ -133,6 +135,14 @@ using namespace llvm;
 static cl::opt<bool> EnableMyIRDumperPass("my-ir-dumper",
                                  cl::desc("Enable my pass for dumping "
                                           "IR information"),
+                                 cl::init(false), cl::Hidden);
+
+static cl::opt<bool> EnableAutoLabelPass("auto-label",
+                                 cl::desc("Add labels when compile linux kernel automaticly"),
+                                 cl::init(false), cl::Hidden);
+
+static cl::opt<bool> EnableIRDumperPass("ir-dumper",
+                                 cl::desc("Dumper IR before middle end optimization"),
                                  cl::init(false), cl::Hidden);
 
 static cl::opt<InliningAdvisorMode> UseInlineAdvisor(
@@ -1284,15 +1294,32 @@ PassBuilder::buildModuleOptimizationPipeline(OptimizationLevel Level,
 }
 
 ModulePassManager
+PassBuilder::buildLabelManagePipeline() {
+  ModulePassManager MPM;
+  // Dump all IR0 to .bc file before all optimazations in middle end
+  if (EnableIRDumperPass)
+    MPM.addPass(IRDumperPass());
+
+  // add labels automaticly
+  if (EnableAutoLabelPass)
+    MPM.addPass(AutoLabelPass());
+
+  // Dump tagged IR0 to .IRInfo.log file before all optimazations in middle end
+  if (EnableMyIRDumperPass)
+    MPM.addPass(MyIRDumperPass());
+  
+  return MPM;
+}
+
+ModulePassManager
 PassBuilder::buildPerModuleDefaultPipeline(OptimizationLevel Level,
                                            bool LTOPreLink) {
   assert(Level != OptimizationLevel::O0 &&
          "Must request optimizations for the default pipeline!");
 
   ModulePassManager MPM;
-  // Dump IR0 before all optimazations in middle end
-  if (EnableMyIRDumperPass)
-    MPM.addPass(MyIRDumperPass());
+
+  MPM.addPass(buildLabelManagePipeline());
 
   // Convert @llvm.global.annotations to !annotation metadata.
   MPM.addPass(Annotation2MetadataPass());
@@ -1739,9 +1766,8 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
          "buildO0DefaultPipeline should only be used with O0");
 
   ModulePassManager MPM;
-  // Dump IR0 before all optimazations in middle end
-  if (EnableMyIRDumperPass)  
-    MPM.addPass(MyIRDumperPass());
+
+  MPM.addPass(buildLabelManagePipeline());
 
   // Perform pseudo probe instrumentation in O0 mode. This is for the
   // consistency between different build modes. For example, a LTO build can be

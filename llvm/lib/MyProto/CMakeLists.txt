@@ -5,7 +5,7 @@ add_definitions(-DGOOGLE_PROTOBUF_NO_RTTI)
 
 include_directories(${PROTOBUF_INCLUDE_DIRS})
 
-PROTOBUF_GENERATE_CPP(IRPROTO_SRCS PROTO_HDRS IRInfo.proto MIRInfo.proto)
+PROTOBUF_GENERATE_CPP(IRPROTO_SRCS PROTO_HDRS IRInfo.proto MIRInfo.proto SecurityCheck.proto)
 message("-- Generated Protobuf cpp files in: " ${CMAKE_CURRENT_BINARY_DIR})
 
 # the name of a LLVM component library has the prefix of "LLVM"
