@@ -347,7 +347,7 @@ namespace clang {
           if (BB.hasName()) {
               bblabel = BB.getName().str();
           }
-          else if (&BB != &F.getEntryBlock()){
+          else {
               // to keep consistence with IR dumper
               const llvm::Module *M = F.getParent();
               ModuleSlotTracker MST(M);
