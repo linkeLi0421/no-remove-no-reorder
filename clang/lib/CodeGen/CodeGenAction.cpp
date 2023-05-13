@@ -27,6 +27,7 @@
 #include "clang/Lex/Preprocessor.h"
 #include "llvm/ADT/Hashing.h"
 #include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/CodeGen/MachineOptimizationRemarkEmitter.h"
 #include "llvm/Demangle/Demangle.h"
 #include "llvm/IR/DebugInfo.h"
@@ -547,6 +548,22 @@ namespace clang {
       output.close();
     }
 
+    static void saveModuletoFile(llvm::Module& M) {
+      // create ./IR dir
+      if (!file_exist("./IR")){
+          int isCreate = mkdir("./IR", S_IRWXU);
+          if(isCreate)
+              outs() << "file create failed.\n";
+      }
+      std::string filename = M.getName().str();
+      std::string file = filename.substr(filename.find('/') + 1);
+      std::replace(file.begin(), file.end(), '/', '_');
+      int bc_fd;
+      sys::fs::openFileForWrite(Twine("./IR/" + file + ".bc"), bc_fd);
+      raw_fd_ostream bc_file(bc_fd, true, true);
+      WriteBitcodeToFile(M, bc_file);
+    }
+
     void HandleTranslationUnit(ASTContext &C) override {
       {
         llvm::TimeTraceScope TimeScope("Frontend");
@@ -646,6 +663,7 @@ namespace clang {
           }
         }
       }
+      saveModuletoFile(*getModule());
 
       for (auto &F : getModule()->functions()) {
         // mark every insts
