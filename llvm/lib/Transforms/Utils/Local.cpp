@@ -328,6 +328,7 @@ bool llvm::ConstantFoldTerminator(BasicBlock *BB, bool DeleteDeadConditions,
       if (MakeImplicitMD)
         NewBr->setMetadata(LLVMContext::MD_make_implicit, MakeImplicitMD);
 
+      NewBr->setDebugLoc(SI->getDebugLoc());
       // Delete the old switch.
       SI->eraseFromParent();
       return true;
