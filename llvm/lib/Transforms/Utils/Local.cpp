@@ -2843,7 +2843,7 @@ void llvm::hoistAllInstructionsInto(BasicBlock *DomBlock, Instruction *InsertPt,
       II = I->eraseFromParent();
       continue;
     }
-    I->setDebugLoc(InsertPt->getDebugLoc());
+    // I->setDebugLoc(InsertPt->getDebugLoc());
     ++II;
   }
   DomBlock->getInstList().splice(InsertPt->getIterator(), BB->getInstList(),
