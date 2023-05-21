@@ -304,7 +304,10 @@ bool llvm::ConstantFoldTerminator(BasicBlock *BB, bool DeleteDeadConditions,
       auto FirstCase = *SI->case_begin();
       Value *Cond = Builder.CreateICmpEQ(SI->getCondition(),
           FirstCase.getCaseValue(), "cond");
-
+      if (Instruction* I = dyn_cast<Instruction>(Cond)) {
+        // Successfully cast Conds to Instruction*
+        I->setDebugLoc(SI->getDebugLoc());      
+      }
       // Insert the new branch.
       BranchInst *NewBr = Builder.CreateCondBr(Cond,
                                                FirstCase.getCaseSuccessor(),
