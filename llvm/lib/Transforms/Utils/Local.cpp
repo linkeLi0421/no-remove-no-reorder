@@ -1172,6 +1172,12 @@ bool llvm::TryToSimplifyUncondBranchFromEmptyBlock(BasicBlock *BB,
       for (BasicBlock *Pred : predecessors(BB))
         Pred->getTerminator()->setMetadata(LoopMDKind, LoopMD);
 
+  if (TI)
+    if (TI->getInstIndex()) {
+      for (BasicBlock *Pred : predecessors(BB))
+        Pred->getTerminator()->appendInstIndexSet(TI->getInstIndex());
+    }
+
   // Everything that jumped to BB now goes to Succ.
   BB->replaceAllUsesWith(Succ);
   if (!Succ->hasName()) Succ->takeName(BB);
