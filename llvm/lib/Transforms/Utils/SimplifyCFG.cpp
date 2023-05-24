@@ -1078,6 +1078,7 @@ static void CloneInstructionsIntoPredecessorBlockAndUpdateSSAUses(
       // sure we reset their debug locations in order to avoid stepping on
       // dead code caused by folding dead branches.
       NewBonusInst->setDebugLoc(DebugLoc());
+      NewBonusInst->setInstIndex(BonusInst.getInstIndex());
     }
 
     RemapInstruction(NewBonusInst, VMap,
@@ -3846,6 +3847,7 @@ static bool SimplifyCondBranchToCondBranch(BranchInst *PBI, BranchInst *BI,
   // Merge the conditions.
   Value *Cond =
       createLogicalOp(Builder, Instruction::Or, PBICond, BICond, "brmerge");
+  PBI->appendInstIndexSet(BI->getInstIndex());
 
   // Modify PBI to branch on the new condition to the new dests.
   PBI->setCondition(Cond);
