@@ -3145,6 +3145,7 @@ static bool performBranchToCommonDestFolding(BranchInst *BI, BranchInst *PBI,
   Value *BICond = VMap[BI->getCondition()];
   PBI->setCondition(
       createLogicalOp(Builder, Opc, PBI->getCondition(), BICond, "or.cond"));
+  PBI->appendInstIndexSet(BI->getInstIndex());
 
   // Copy any debug value intrinsics into the end of PredBlock.
   for (Instruction &I : *BB) {
