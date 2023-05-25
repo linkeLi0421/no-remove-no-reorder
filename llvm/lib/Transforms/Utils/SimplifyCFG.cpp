@@ -4303,6 +4303,7 @@ bool SimplifyCFGOpt::SimplifyBranchOnICmpChain(BranchInst *BI,
 
   // Create the new switch instruction now.
   SwitchInst *New = Builder.CreateSwitch(CompVal, DefaultBB, Values.size());
+  New->setDebugLoc(BI->getDebugLoc());
 
   // Add all of the 'cases' to the switch instruction.
   for (unsigned i = 0, e = Values.size(); i != e; ++i)
