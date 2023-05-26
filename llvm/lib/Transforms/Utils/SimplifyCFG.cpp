@@ -4891,6 +4891,13 @@ bool SimplifyCFGOpt::TurnSwitchRangeIntoICmp(SwitchInst *SI,
     Cmp = Builder.CreateICmpULT(Sub, NumCases, "switch");
   BranchInst *NewBI = Builder.CreateCondBr(Cmp, ContiguousDest, OtherDest);
 
+  if (Instruction* icmp = dyn_cast<Instruction>(Cmp)) {
+    icmp->setInstIndex(SI->getInstIndex());
+    icmp->appendInstIndexSet(SI->getInstIndexSet());
+  }
+  NewBI->setInstIndex(SI->getInstIndex());
+  NewBI->appendInstIndexSet(SI->getInstIndexSet());
+
   // Update weight for the newly-created conditional branch.
   if (HasBranchWeights(SI)) {
     SmallVector<uint64_t, 8> Weights;
