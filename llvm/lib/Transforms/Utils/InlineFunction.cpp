@@ -1479,6 +1479,7 @@ static DebugLoc inlineDebugLoc(DebugLoc OrigDL, DILocation *InlinedAt,
                          OrigDL.getScope(), IA);
   // add InstIndex to new DebugLoc
   Ret.setInstIndex(OrigDL.getInstIndex());
+  Ret.appendInstIndexSet(OrigDL.getInstIndexSet());
   return Ret;
 }
 

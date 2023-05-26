@@ -1079,6 +1079,7 @@ static void CloneInstructionsIntoPredecessorBlockAndUpdateSSAUses(
       // dead code caused by folding dead branches.
       NewBonusInst->setDebugLoc(DebugLoc());
       NewBonusInst->setInstIndex(BonusInst.getInstIndex());
+      NewBonusInst->appendInstIndexSet(BonusInst.getInstIndexSet());
     }
 
     RemapInstruction(NewBonusInst, VMap,
