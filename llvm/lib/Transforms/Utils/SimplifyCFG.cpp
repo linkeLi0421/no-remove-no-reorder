@@ -1298,6 +1298,7 @@ bool SimplifyCFGOpt::PerformValueComparisonIntoPredecessorFolding(
   NewSI->setDebugLoc(PTI->getDebugLoc());
   for (ValueEqualityComparisonCase &V : PredCases)
     NewSI->addCase(V.Value, V.Dest);
+  NewSI->appendInstIndexSet(TI->getInstIndexSet());
 
   if (PredHasWeights || SuccHasWeights) {
     // Halve the weights if any of them cannot fit in an uint32_t
