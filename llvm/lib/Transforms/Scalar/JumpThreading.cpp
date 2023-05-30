@@ -2746,6 +2746,8 @@ void JumpThreadingPass::unfoldSelectInstr(BasicBlock *Pred, BasicBlock *BB,
   BI->applyMergedLocation(PredTerm->getDebugLoc(), SI->getDebugLoc());
   SIUse->setIncomingValue(Idx, SI->getFalseValue());
   SIUse->addIncoming(SI->getTrueValue(), NewBB);
+  BI->setInstIndex(SI->getInstIndex());
+  BI->appendInstIndexSet(SI->getInstIndexSet());
 
   // The select is now dead.
   SI->eraseFromParent();
