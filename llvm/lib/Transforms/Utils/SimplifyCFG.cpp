@@ -1623,6 +1623,8 @@ HoistTerminator:
         SI = cast<SelectInst>(
             Builder.CreateSelect(BI->getCondition(), BB1V, BB2V,
                                  BB1V->getName() + "." + BB2V->getName(), BI));
+        SI->setInstIndex(BI->getInstIndex());
+        SI->appendInstIndexSet(BI->getInstIndexSet());
       }
 
       // Make the PHI node use the select for all incoming values for BB1/BB2
