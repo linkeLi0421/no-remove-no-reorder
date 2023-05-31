@@ -2863,6 +2863,13 @@ void MachineBlockPlacement::optimizeBranches() {
     if (!TII->analyzeBranch(*ChainBB, TBB, FBB, Cond, /*AllowModify*/ true)) {
       // If PrevBB has a two-way branch, try to re-order the branches
       // such that we branch to the successor with higher probability first.
+
+      // Save the debug location of the old branch instruction.
+      DebugLoc dl = DebugLoc();
+      for (auto &MI : ChainBB->terminators()) {
+        dl = MI.getDebugLoc();
+        break; // Get the first terminator instruction's debug location.
+      }
       if (TBB && !Cond.empty() && FBB &&
           MBPI->getEdgeProbability(ChainBB, FBB) >
               MBPI->getEdgeProbability(ChainBB, TBB) &&
