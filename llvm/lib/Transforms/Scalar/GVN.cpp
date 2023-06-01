@@ -2451,6 +2451,8 @@ bool GVNPass::processInstruction(Instruction *I) {
   if (MD && Repl->getType()->isPtrOrPtrVectorTy())
     MD->invalidateCachedPointerInfo(Repl);
   markInstructionForDeletion(I);
+  if (auto* ReplInst = dyn_cast<Instruction>(Repl))
+    ReplInst->appendInstIndexSet(I->getInstIndex());
   return true;
 }
 
