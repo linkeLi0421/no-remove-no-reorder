@@ -2879,7 +2879,6 @@ void MachineBlockPlacement::optimizeBranches() {
         LLVM_DEBUG(dbgs() << "    Edge probability: "
                           << MBPI->getEdgeProbability(ChainBB, FBB) << " vs "
                           << MBPI->getEdgeProbability(ChainBB, TBB) << "\n");
-        DebugLoc dl; // FIXME: this is nowhere
         TII->removeBranch(*ChainBB);
         TII->insertBranch(*ChainBB, FBB, TBB, Cond, dl);
       }
