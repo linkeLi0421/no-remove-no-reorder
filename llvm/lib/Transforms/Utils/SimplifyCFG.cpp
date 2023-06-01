@@ -5995,6 +5995,11 @@ static bool SwitchToLookupTable(SwitchInst *SI, IRBuilder<> &Builder,
         TableIndex, ConstantInt::get(MinCaseVal->getType(), TableSize));
     RangeCheckBranch =
         Builder.CreateCondBr(Cmp, LookupBB, SI->getDefaultDest());
+    if (auto* NewCmpinst = dyn_cast<Instruction>(Cmp)){
+      NewCmpinst->setInstIndex(SI->getInstIndex());
+      NewCmpinst->appendInstIndexSet(SI->getInstIndexSet());
+    }
+    RangeCheckBranch->setDebugLoc(SI->getDebugLoc());
     if (DTU)
       Updates.push_back({DominatorTree::Insert, BB, LookupBB});
   }
