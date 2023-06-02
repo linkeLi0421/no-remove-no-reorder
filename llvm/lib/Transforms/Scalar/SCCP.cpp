@@ -60,6 +60,10 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/PredicateInfo.h"
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/FileSystem.h"
+#include <fstream>
+#include <sys/stat.h>
 #include <cassert>
 #include <utility>
 #include <vector>
@@ -79,6 +83,8 @@ STATISTIC(IPNumGlobalConst, "Number of globals found to be constant by IPSCCP");
 STATISTIC(
     IPNumInstReplaced,
     "Number of instructions replaced with (simpler) instruction by IPSCCP");
+
+static std::vector<std::string> fps;
 
 // Helper to check if \p LV is either a constant or a constant
 // range with a single element. This should cover exactly the same cases as the
@@ -231,6 +237,11 @@ static bool runSCCP(Function &F, const DataLayout &DL,
   return MadeChanges;
 }
 
+inline static bool file_exist (const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
+}
+
 PreservedAnalyses SCCPPass::run(Function &F, FunctionAnalysisManager &AM) {
   const DataLayout &DL = F.getParent()->getDataLayout();
   auto &TLI = AM.getResult<TargetLibraryAnalysis>(F);
@@ -239,6 +250,21 @@ PreservedAnalyses SCCPPass::run(Function &F, FunctionAnalysisManager &AM) {
 
   auto PA = PreservedAnalyses();
   PA.preserveSet<CFGAnalyses>();
+  if (!file_exist("./fp_cases")){
+    int isCreate = mkdir("./fp_cases", S_IRWXU);
+    if(isCreate)
+        outs() << "file create failed.\n";
+  }
+  for (std::string s : fps) {
+    std::error_code EC;
+    raw_fd_ostream outstream("./fp_cases/SSCP.log", EC, sys::fs::OpenFlags::OF_Append);
+    if (EC) {
+      errs() << "error opening output file: " << EC.message() << '\n';
+      exit(1);
+    }
+    outstream<<s<<"\n";
+  }
+
   return PA;
 }
 
@@ -380,6 +406,11 @@ static bool removeNonFeasibleEdges(const SCCPSolver &Solver, BasicBlock *BB,
     }
 
     BranchInst::Create(OnlyFeasibleSuccessor, BB);
+    std::string InstoString;
+    raw_string_ostream rso(InstoString);
+    TI->print(rso);
+    rso.flush();
+    fps.push_back(InstoString);
     TI->eraseFromParent();
     DTU.applyUpdatesPermissive(Updates);
   } else if (FeasibleSuccessors.size() > 1) {
