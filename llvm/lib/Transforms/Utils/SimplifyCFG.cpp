@@ -3161,6 +3161,8 @@ static bool performBranchToCommonDestFolding(BranchInst *BI, BranchInst *PBI,
     }
   }
 
+  PBI->appendInstIndexSet(BI->getInstIndexSet());
+
   ++NumFoldBranchToCommonDest;
   return true;
 }
